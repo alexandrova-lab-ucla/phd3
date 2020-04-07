@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import logging
+import iteration
+import os
+import json
 
 class controller:
 
@@ -15,3 +18,16 @@ class controller:
         # need to have it pass the parameters to the appropriate iteration when it so needs to!!!!!!
         # This will be the brains of the operation and spawn the iterations as needed and then abort when it is done
         pass
+
+
+if __name__ == "__main__":
+
+    par = {"last pdb": os.path.abspath("./HThR.pdb"),
+            "DMD CONVERGE": False,
+            "MAX DMD STEPS": 10}
+
+    with open("dmdinput.json", 'r') as f:
+        par["dmd params"]= json.load(f)
+
+    i = iteration.iteration( "iter_1", ".", par )
+    i.continue_calculation()
