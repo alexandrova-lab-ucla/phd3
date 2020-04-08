@@ -22,12 +22,23 @@ class controller:
 
 if __name__ == "__main__":
 
-    par = {"last pdb": os.path.abspath("./HThR.pdb"),
-            "DMD CONVERGE": False,
-            "MAX DMD STEPS": 10}
+
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
+
+    par = {"last pdb": os.path.abspath("./HG3.pdb"),
+            "DMD CONVERGE": True,
+            "MAX DMD STEPS": 5,
+            "QM Chop":{
+                "Residues": ["A:49", "A:126", "A:43-A:46", "A:264"]
+                }
+            }
 
     with open("dmdinput.json", 'r') as f:
         par["dmd params"]= json.load(f)
 
-    i = iteration.iteration( "iter_1", ".", par )
+    with open("definput.json", 'r') as f:
+        par["qm params"] = json.load(f)
+
+    i = iteration.iteration( "iter_1", ".", par, 1)
     i.continue_calculation()
