@@ -1,0 +1,67 @@
+#!/bin/csh -f
+#
+#  SGE job for script built  {{ date }}
+#
+#  Use current working directory
+#$ -cwd
+#  output          = {{ submit_dir }}job.${JOB_ID}.out
+#$ -o {{ submit_dir }}/job.$JOB_ID.out
+#  error           = Merged with joblog
+#$ -j y
+
+#  Resources requested
+#$ -pe {{ node_type }}threads* {{ cores }}
+##$ -pe dc_* {{ cores }}
+#$ -l exclusive,h_data=4G,h_rt={{ time }}:00:00{{ high_priority }}
+
+#  Name of application for log
+#$ -v QQAPP=openmpi
+
+#  Email address to notify
+#$ -M {{ user }}@mail
+#  Notify at beginning and end of job
+#$ -m a
+#  Job is not rerunable
+#$ -r n
+
+#$ -N {{ job_name }}
+
+#
+# Initialization for mpi parallel execution
+#
+unalias *
+set qqversion = 
+set qqapp     = "openmpi parallel"
+set qqptasks  = {{ cores }}
+set qqidir    = {{ submit_dir }}
+set qqjob     = {{ job_name }}
+set qqodir    = {{ submit_dir }}
+{% set global_scratch = '/work/tmp/job_$JOB_ID' %}
+mkdir {{ global_scratch }}
+echo "I created the scratch dir" {{ global_scratch }}
+
+source /u/local/bin/qq.sge/qr.runtime
+if ($status != 0) exit (1)
+echo "I sourced the runtime file"
+
+echo "  script directory: "$qqidir
+echo "  Submitted to SGE: "$qqsubmit
+echo "  'scratch' directory (on each node): "$qqscratch
+echo "  script 4-way parallel job configuration:"
+echo "    $qqconfig" | tr "\\" "\n"
+
+if !($?LD_LIBRARY_PATH) then
+   setenv LD_LIBRARY_PATH  /u/local/intel/11.1/openmpi/1.4.2/lib:/u/local/compilers/intel/11.1/current/lib/intel64
+else
+   setenv LD_LIBRARY_PATH /u/local/intel/11.1/openmpi/1.4.2/lib:/u/local/compilers/intel/11.1/current/lib/intel64:${LD_LIBRARY_PATH}
+endif
+
+source /u/local/Modules/default/init/modules.csh
+module load python/3.7.0
+
+# Run job command here
+set time=(10 "System time: %S  User time: %U  Elapsed time: %E")
+time {{ run_script }} -n {{ cores }} -t {{ time }} -s {{ global_scratch }}
+
+source /u/local/bin/qq.sge/qr.runtime
+exit (0)
