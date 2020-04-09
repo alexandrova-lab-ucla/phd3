@@ -1,29 +1,178 @@
 #!/usr/bin/env python3
 
 import logging
-import iteration
 import os
+import signal
 import json
+import shutil
+import sys
+
+import phd3.iteration as iteration
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+        'controller'
+    ]
 
 class controller:
 
-    def __init__(self):
+    def __init__(self, cores:int, time:int=-1, scratch:str="./"):
+        self._cores = cores
+        self._time = time
+        self._scratch = scratch
+        self._submit_directory = os.getcwd()
+        self._iteration = 0
+        self._parameters = {}
+        self._curr_iterat = None
 
-        #Could create a list of functions that get called in sequential ordering of some sort? then save a numerical index of what step we are on maybe
+        self._stop = False
 
-        # We need to find the phd_control.json file and load that in
-        # Then we need to see where we are in the calculations and set a variable to that step
-        # Finally, we need to make sure that we delete any files that were created on a failed run if that is the step we are now performing
+        #In case a signal is sent to stop!
+        signal.signal(signal.SIGUSR1, self.alarm_handler)
 
-        # need to have it pass the parameters to the appropriate iteration when it so needs to!!!!!!
-        # This will be the brains of the operation and spawn the iterations as needed and then abort when it is done
-        pass
+        if not os.path.isfile("phdinput.json"):
+            logger.error("PHDinput.json does not exist")
+            raise FileNotFoundError("phdinput.jdon")
+       
+        #TODO verify phdinput.json is valid format
+            
+        logger.debug("Loading in input file")
+        with open("phdinput.json", 'r') as f:
+            self._parameters = json.load(f)
+
+        logger.debug("Checking last iteration directory")
+        dirs = [d for d in os.listdir() if os.path.isdir(d)]
+        iterations = [int(d.split("_")[1]) for d in dirs if "Iteration_" in d]
+        if not iterations:
+            last_iteration_directory = -1
+
+        else:
+            last_iteration_directory = max(iterations)
+
+        logger.debug("Checking last saved iteration")
+        self.last_finished_iteration = -1
+        if os.path.isfile("phd_energy"):
+            energy_lines = []
+            with open("phd_energy") as energy:
+                for line in energy:
+                    energy_lines.append(line)
+
+            #Get rid of the first line
+            if len(energy_lines) > 1:
+                energy_lines = energy_lines[1:]
+                self.last_finished_iteration = len(energy_lines) - 1
+
+        #Then we assume we start the next after last_iteration_directory
+        if last_iteration_directory != self.last_finished_iteration:
+            #Then we need to start from the last_iteration_directory
+
+            #We should throw an error if this is not the case
+            assert(last_iteration_directory > self.last_finished_iteration)
+            self._iteration = last_iteration_directory
+
+        else:
+            #They are the same, therefore start next iteration
+            self._iteration = self.last_finished_iteration + 1
+
+        logger.debug("Finding last to_next_iteration.pdb file")
+        if self._iteration > 0 :
+            if os.path.isfile(os.path.join(f"Iteration_{self._iteration-1}", "to_next_iteration.pdb")):
+                self._parameters["last pdb"] = os.path.abspath(os.path.join(f"Iteration_{self._iteration-1}", "to_next_iteration.pdb"))
+
+            else:
+                logger.error("Last to_next_iteration.pdb not found!")
+                raise FileNotFoundError("to_next_iteration.pdb")
+
+        else:
+            self._parameters["last pdb"] = os.path.abspath(self._parameters["pdb file"])
+
+        #Now we move the necessary files to the new directory!!
+        if os.path.abspath(self._scratch) != os.path.abspath(self._submit_directory):
+            if not os.path.isdir(self._scratch):
+                logger.debug("Making scratch directory")
+                os.mkdir(self._scratch)
+            
+            if self._iteration == last_iteration_directory:
+                if os.path.isdir(os.path.join(self._scratch, f"Iteration_{last_iteration_directory}")):
+                    shutil.rmtree(os.path.join(self._scratch, f"Iteration_{last_iteration_directory}"))
+
+                shutil.copytree(f"Iteration_{last_iteration_directory}", os.path.join(self._scratch, f"Iteration_{last_iteration_directory}"))
+                
+            #copy over the phdenergy file
+            if os.path.isfile("phd_energy"):
+                shutil.copy("phd_energy", self._scratch)
+
+            logger.debug("Changing directory from {os.getcwd()} to {self._scratch}")            
+            os.chdir(self._scratch)
+
+        if self._time != -1:
+            logger.debug("Starting the timer")
+            signal.signal(signal.SIGALRM, self.alarm_handler)
+            signal.alarm((self._time* 60 - 45) * 60)
+
+        while not self._stop and self._iteration <= self._parameters["Max Iterations"]:
+            #This is the loop we stay in until we need to quit
+            self._curr_iterat = iteration.iteration(f"Iteration_{self._iteration}", os.path.abspath("."), self._parameters, self._iteration, self._cores) 
+            self._curr_iterat.continue_calculation()
+            if self._stop:
+                self._iterations -=1
+
+            self._iterations += 1
+
+        if self._time != -1:
+            logger.debug("Turning off timer")
+            signal.alarm(0)
+
+        if os.path.abspath(self._scratch) != os.path.abspath(self._submit_directory):
+            dirs = [d for d in os.listdir() if "Iteration_" in d]
+            for d in dirs:
+                if os.path.isdir(os.path.join(self._submit_directory, d)):
+                    shutil.rmtree(os.path.join(self._submit_directory, d))
+
+                shutil.copytree(d, os.path.join(self._submit_directory, d))
+
+            if os.path.isfile("phd_energy"):
+                shutil.copy("phd_energy", self._submit_directory)
+            
+            logger.debug("Changing directory from {os.getcwd()} to {self._submit_directory}")            
+            os.chdir(self._submit_directory)
+        
+        if self._stop and self._iteration <= self._parameters["MAX Iteration"]:
+            if self._parameters["Resubmit"]:
+                #TODO have this call submit phd again!
+                pass
+
+        elif self._iteration > self._parameters["Max Iterations"]:
+            logger.info("Finished with all QM/DMD cyles")
+
+    def alarm_handler(self, signum, frame):
+        #Alarm went off
+        logger.info("Alarm went off!")
+        self._stop = True
+
+        #Propogate down to the current iteration
+        self._curr_iterat.signal_alarm()
+
+        if self._scratch != self._submit_directory:
+            dirs = [d for d in os.listdir(self._scratch) if "Iteration_" in d]
+            for d in dirs:
+                if os.path.isdir(os.path.join(self._submit_directory, d)):
+                    shutil.rmtree(os.path.join(self._submit_directory, d))
+
+                shutil.copytree(os.path.join(self._scratch, d), os.path.join(self._submit_directory, d))
+
+            if os.path.isfile(os.path.join(self._scratch, "phd_energy")):
+                shutil.copy(os.path.join(self._scratch, "phd_energy"), self._submit_directory)
+            
 
 
 if __name__ == "__main__":
 
-
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+    c = controller(1 )
+
+    sys.exit(0)
 
 
     par = {"last pdb": os.path.abspath("./HG3.pdb"),
