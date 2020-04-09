@@ -1,0 +1,89 @@
+{
+    "pdb file": "start.pdb",
+    "DMD CONVERGE": true,
+    "MAX DMD STEPS": 10,
+    "QM Chop":{
+        "Residues": [],
+        "Exclude Atoms": [],
+        "Substrate Cut": [],
+        "Exclude Sidechain": []
+    },
+   
+    "Protonation" : [],
+
+    "Disulfide Bridge": [],
+
+    "Resubmit": true,
+
+    "qm params": {
+        "basis" : {
+            "all" : "def2-SVP"
+        },
+
+        "charge" : -1,
+
+        "open_shell" : {
+            "open_shell_on" : false,
+            "unpaired" : 1
+        },
+
+        "dft" : {
+            "dft_on" : true,
+            "func" : "tpss",
+            "grid" : "m4"
+        },
+
+        "rij" : true,
+        "marij" : true,
+        "dsp" : true,
+        "stp" : {
+            "itvc" : 0,
+            "trad": 0.1
+        },
+
+        "scf" : {
+            "iter" : 300,
+            "conv" : 6
+        },
+
+        "cosmo" : null,
+
+        "calculation" : "geo",
+        "geo_iterations" : 200,
+        "weight" : false,
+        "gcart" : null,
+        "denconv" : null
+    },
+
+    "dmd params": {
+        "Thermostat" : "ANDERSON",
+        "Initial Temperature" : 0.1,
+        "Final Temperature" : 0.1,
+        "HEAT_X_C" : 0.1,
+        "Echo File" : "echo",
+        "Movie File" : "movie",
+        "Restart File" : "dmd_restart",
+        "dt" : 10,
+        "Time" : 1000,
+
+        "titr" : {
+            "titr on" : false
+        },
+
+        "Freeze Non-Residues": true,
+        "Restrict Metal Ligands": true,
+
+        "Frozen atoms" : {
+            "Chains": ["Chain1", "Chain2"],
+            "Residues": [["Chain", ResNum] , ["Chain", ResNum] ],
+            "Atoms" : [
+                ["Chain", ResNum, "ID"],
+                ["Chain", ResNum, "ID"],
+                ["Chain", ResNum, "ID"]
+            ]
+        },
+        "Restrict Displacement" : [
+            [["Chain", ResNum, "ID"], ["Chain", ResNum, "ID"], 0.2]
+        ]
+    }
+}

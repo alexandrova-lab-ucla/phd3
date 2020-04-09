@@ -1,0 +1,75 @@
+{
+    "version" : 1,
+
+    "disable_existing_loggers" : false,
+
+    "formatters" : {
+        "brief" : {
+            "format" : "\t%(message)s",
+            "class": "logging.Formatter"
+        },
+        "single_line" : {
+            "format" : "%(asctime)-15s %(levelname)-8s %(message)s",
+            "class": "logging.Formatter",
+            "datefmt" : "%a, %d %b %Y %H:%M:%S"
+        },
+        "verbose" : {
+            "class": "logging.Formatter",
+            "datefmt": "%I:%M:%S",
+            "format": "%(levelname)-8s; [%(process)d]; %(threadName)s; %(name)-15s; %(module)s:%(funcName)s;%(lineno)d: %(message)s"
+        }
+    },
+
+    "loggers" : {
+        "phd3.setupjob" : {
+            "handlers": ["console"],
+            "level" : "DEBUG"
+        },
+        "phd3.qm_calculation" : {
+            "handlers": ["node_console"],
+            "level" : "DEBUG"
+        },
+        "phd3.dmd_simulation": {
+            "handlers": ["node_console"],
+            "level" : "DEBUG"
+        },
+        "phd3.bin" : {
+            "handlers": ["console"],
+            "level": "INFO"
+        },
+        "__main__": {
+            "handlers": ["console"],
+            "level": "DEBUG"
+        },
+        "phd3.utility" : {
+            "handlers" : ["console"],
+            "level" : "DEBUG"
+        },
+        "phd3" : {
+            "handlers" : ["console"],
+            "level" : "INFO"
+        },
+        "phd3.protein" : {
+             "handlers": ["console"],
+            "level": "INFO"
+        }
+    },
+    "handlers" : {
+        "console" : {
+            "class" : "logging.StreamHandler",
+            "level" : "INFO",
+            "formatter" : "brief",
+            "stream" : "ext://sys.stdout"
+        },
+        "node_console": {
+            "class" : "logging.StreamHandler",
+            "formatter": "brief",
+            "level" : "INFO",
+            "stream" : "ext://sys.stdout"
+        }
+    },
+    "root" : {
+        "handlers" : [],
+        "level" : "INFO"
+    }
+}

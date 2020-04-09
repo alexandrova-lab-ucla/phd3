@@ -1,0 +1,59 @@
+{
+	"geometry" : {
+		"cartesians" : false,
+		"idef" : {
+			"idef_on" : false,
+			"freeze_stretch" : [
+				"4,54",
+				"3,24"
+			]
+		},
+		"ired" : true,
+		"iaut" : {
+			"iaut_on" : false,
+			"bonds" : [
+				"1,5",
+				"10,8"
+			]
+		}
+	},
+
+	"basis" : {
+		"all" : "def2-SVP"
+	},
+
+	"charge" : -1,
+
+	"open_shell" : {
+		"open_shell_on" : false,
+		"unpaired" : 1
+	},
+
+	"dft" : {
+		"dft_on" : true,
+		"func" : "m06",
+		"grid" : "m4"
+	},
+
+	"rij" : true,
+	"marij" : true,
+	"dsp" : true,
+	"stp" : {
+		"itvc" : 0,
+		"trad": 0.1
+	},
+
+	"scf" : {
+		"iter" : 300,
+		"conv" : 6
+	},
+
+	"cosmo" : null,
+
+	"freeze_atoms" : [1, 2],
+	"calculation" : "geo",
+	"geo_iterations" : 200,
+	"weight" : false,
+	"gcart" : null,
+	"denconv" : null
+}

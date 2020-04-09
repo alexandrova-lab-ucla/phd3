@@ -1,0 +1,39 @@
+{
+    "Thermostat" : "ANDERSON",
+    "Initial Temperature" : 0.1,
+    "Final Temperature" : 0.1,
+    "HEAT_X_C" : 0.1,
+    "Echo File" : "echo",
+    "Movie File" : "movie",
+    "Restart File" : "dmd_restart",
+    "dt" : 10,
+    "Time" : 1000,
+
+    "titr" : {
+        "titr on" : on,
+    },
+
+    "Freeze Non-Residues": false,
+    "Restrict Metal Ligands": false,
+
+    "Custom protonation states" : [
+        ["Chain", ResNum,"protonate"],
+        ["Chain", ResNum, "protonate", 1]
+    ],
+    "Frozen atoms" : {
+        "Chains": ["Chain1", "Chain2"],
+        "Residues": [["Chain", ResNum] , ["Chain", ResNum] ],
+        "Atoms" : [
+            ["Chain", ResNum, "ID"],
+            ["Chain", ResNum, "ID"],
+            ["Chain", ResNum, "ID"]
+        ]
+    },
+    "Restrict Displacement" : [
+        [["Chain", ResNum, "ID"], ["Chain", ResNum, "ID"], 0.2]
+    ],
+    "Commands": {
+    },
+    "Remaining Commands": {
+    }
+}
