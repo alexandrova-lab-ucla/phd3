@@ -165,8 +165,9 @@ class Protein:
             self._logger.debug("Relabeling the protein")
             self.relabel()
         
-        self._logger.debug("Making the bond table for the protein")
-        self.make_bond_table()
+        else: #relabel calls make_bond_table already
+            self._logger.debug("Making the bond table for the protein")
+            self.make_bond_table()
 
     def get_atom(self, identifier):
         for chain in self.chains:
@@ -231,6 +232,9 @@ class Protein:
 
     def relabel(self, format: str="DMD"):
 
+        #Need to make the bond table
+        self.make_bond_table()
+
         atom_label_dict = {}
         with open(pkg_resources.resource_filename('phd3.resources', 'atom_label.csv')) as csvfile:
             csvreader = csv.reader(csvfile)
@@ -257,10 +261,33 @@ class Protein:
                 self._logger.warning(f"Residue: {residue.name}{residue.number} not in atom_label.csv!")
                 return
 
+            #This way we don't need so many naming schemes
+            nterm_hydrogens = []
+            cterm_oxygens = []
+            if terminus == "NTERM":
+                #Finding hydrogens attached to nitrogen
+                try:
+                    for a in residue.get_atom("N").bonds:
+                        if a.element.upper() == "H":
+                            nterm_hydrogens.append(a)
+                
+                except:
+                    self._logger.warn("Protein does not have a nitrogen at n-terminus")
+
+            if terminus == "CTERM":
+                try:
+                    for a in residue.get_atom("C").bonds:
+                        if a.element.upper() == "O":
+                            cterm_oxygens.append(a)
+
+                except:
+                    self._logger.warn("Protein does not have a carbony at c-terminus")
+
             #Find the column that has the current naming scheme present
             self._logger.debug("Checking for the scheme id")
             for schemeid in range(len(schemenames)):
                 scheme = []
+                nterm_scheme = []
                 for namelist in atom_label_dict[residue.name]:
                     self._logger.debug(f"Adding scheme name: {namelist[schemeid]}")
                     scheme.append(namelist[schemeid])
@@ -271,7 +298,8 @@ class Protein:
 
                 # Check to see if this is the naming scheme
                 for atom in residue.atoms:
-                    if atom.id not in scheme:
+                    #Want to ignore and hydrogens attached to the nitrogen
+                    if atom not in nterm_hydrogens and atom not in cterm_oxygens and atom.id not in scheme:
                         self._logger.debug(f"Atom: {atom.id} not in scheme: {scheme}")
                         break
 
@@ -284,12 +312,81 @@ class Protein:
             #Loop over all of the atoms
             self._logger.debug("Found the scheme id")
             for atom in residue.atoms:
+                if atom in nterm_hydrogens or atom in cterm_oxygens:
+                    #We want to deal with these seperately
+                    continue
+
                 old_atomid = scheme.index(atom.id)
                 if terminus is not None:
                     atom.id = (atom_label_dict[residue.name] + atom_label_dict[terminus])[old_atomid][newid]
 
                 else:
                     atom.id = atom_label_dict[residue.name][old_atomid][newid]
+
+            if nterm_hydrogens:
+                for schemeid in range(len(schemenames)):
+                    scheme = []
+                    for namelist in atom_label_dict[residue.name]:
+                        self._logger.debug(f"Adding scheme name: {namelist[schemeid]}")
+                        scheme.append(namelist[schemeid])
+
+                    if terminus is not None:
+                        for namelist in atom_label_dict[terminus]:
+                            scheme.append(namelist[schemeid])
+
+                    # Check to see if this is the naming scheme
+                    for atom in nterm_hydrogens:
+                        if atom.id not in scheme:
+                            self._logger.debug(f"Atom: {atom.id} not in scheme: {scheme}")
+                            break
+
+                    else:
+                        break # This is the correct naming scheme!
+
+                else:
+                    raise ValueError(f"Could not find the naming scheme for {residue.name}{residue.number} {atom}")
+            
+                self._logger.debug("Found the scheme id for nterminus hydrogens")
+                for atom in nterm_hydrogens:
+                    old_atomid = scheme.index(atom.id)
+                    if terminus is not None:
+                        atom.id = (atom_label_dict[residue.name] + atom_label_dict[terminus])[old_atomid][newid]
+
+                    else:
+                        atom.id = atom_label_dict[residue.name][old_atomid][newid]
+            
+            if cterm_oxygens:
+                for schemeid in range(len(schemenames)):
+                    scheme = []
+                    for namelist in atom_label_dict[residue.name]:
+                        self._logger.debug(f"Adding scheme name: {namelist[schemeid]}")
+                        scheme.append(namelist[schemeid])
+
+                    if terminus is not None:
+                        for namelist in atom_label_dict[terminus]:
+                            scheme.append(namelist[schemeid])
+
+                    # Check to see if this is the naming scheme
+                    for atom in cterm_oxygens:
+                        if atom.id not in scheme:
+                            self._logger.debug(f"Atom: {atom.id} not in scheme: {scheme}")
+                            break
+
+                    else:
+                        break # This is the correct naming scheme!
+
+                else:
+                    raise ValueError(f"Could not find the naming scheme for {residue.name}{residue.number} {atom}")
+            
+                self._logger.debug("Found the scheme id for nterminus hydrogens")
+                for atom in cterm_oxygens:
+                    old_atomid = scheme.index(atom.id)
+                    if terminus is not None:
+                        atom.id = (atom_label_dict[residue.name] + atom_label_dict[terminus])[old_atomid][newid]
+
+                    else:
+                        atom.id = atom_label_dict[residue.name][old_atomid][newid]
+
 
             # TODO add Jacks glycine hydrogen fixed so that naming convention is always the same with Chimera
 

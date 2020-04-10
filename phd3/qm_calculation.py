@@ -27,7 +27,7 @@ class TMcalculation:
     """
 
     def __init__(self, cores, run_dir: str='./', time=-1, coord=None, parameters: dict=None):
-        logger.info("Beginning Calculation")
+        logger.debug("Beginning Calculation")
 
         logger.debug("Initializing variables")
         self._submit_directory = os.getcwd()
@@ -128,10 +128,10 @@ class TMcalculation:
 
         # At this point we will set up the turbomole job if it is not already setup (or more importantly, the control file!)
         if os.path.isfile("control"):
-            logger.info("Control file exists, I am trusting that it has been set up properly")
+            logger.debug("Control file exists, I am trusting that it has been set up properly")
 
         else:
-            logger.warning("Control file does not exist. Attempting to run setupturbomole.py")
+            logger.debug("Control file does not exist. Attempting to run setupturbomole.py")
             try:
                 stm = setupTMjob(self._raw_parameters)
 
@@ -194,7 +194,7 @@ class TMcalculation:
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
         try:
-            logger.info("Beginning the TURBOMOLE job")
+            logger.info("Beginning the TURBOMOLE calulcation")
 
             # Arm the timer
             if self._time_to_run != -1:
@@ -329,13 +329,13 @@ class TMcalculation:
         if self._raw_parameters["gcart"] is not None:
             command += f" -gcart {str(self._raw_parameters['gcart'])}"
 
-        self._run(command + f" -np {self._cores}")
+        self._run(command + f" -np {self._cores} > jobex.out")
 
     def _singlepoint(self):
         """ Exceutes the commands (dscf/ridft) to perform a singlepoint calculation """
         logger.debug("Single Point Job")
         command = "dscf" if not self._raw_parameters["rij"] else "ridft"
-        self._run(command + f" -smpcpus {self._cores}")
+        self._run(command + f" -smpcpus {self._cores} > {command}.out")
 
     def _escf(self):
         """ Executes the command escf to perform a excited state calculation """
@@ -442,14 +442,15 @@ class TMcalculation:
         if self._raw_parameters["gcart"] is not None:
             command += f" -gcart {str(self._raw_parameters['gcart'])}"
 
-        self._run(command + f" -np {self._cores}")
+        self._run(command + f" -np {self._cores} > trans.out")
 
     def _run(self, command):
-        logger.info(f"Issuing command: {command}")
+        logger.info(f"[Issuing command] ==>> {command}")
         with Popen(command, shell=True, universal_newlines=True, stdin=PIPE,
                    stdout=PIPE, stderr=STDOUT, env=os.environ) as shell:
             while shell.poll() is None:
                 logger.info(shell.stdout.readline().strip())
+        logger.info("")
 
     def calculation_alarm_handler(self, signum, frame):
         """
@@ -598,13 +599,20 @@ class TMcalculation:
         :param turbodir: Directory where TURBOMOLE is installed
         """
         TMcalculation.create_MFILE(cores)
+        
+        if "TURBOTMPDIR" in os.environ and "PARA_ARCH" in os.environ and "PARNODES" in os.environ:
+            if os.environ["TURBOTMPDIR"] == scratch_directory and os.environ["PARA_ARCH"] == para_arch:
+                if os.environ['PARNODES'] == str(cores):
+                    #Already setup env. once...no need to again
+                    os.environ["HOSTS_FILE"] = "./" + constants.MFILE
+                    return
 
-        logger.info("Setting up the TURBOMOLE Environment for:")
-        logger.info(f"Cores       =   {str(cores)}")
-        logger.info(f"PARA_ARCH   =   {para_arch}")
-        logger.info(f"LOCAL_DIR   =   {scratch_directory}")
-        logger.info(f"TM_PAR_FORK =   on")
-
+        logger.info(">>>> Setting up TURBOMOLE Environment >>>>")
+        logger.info(f"[Cores]       ==>>   {str(cores)}")
+        logger.info(f"[PARA_ARCH]   ==>>   {para_arch}")
+        logger.info(f"[LOCAL_DIR]   ==>>   {scratch_directory}")
+        logger.info(f"[TM_PAR_FORK] ==>>   on")
+        logger.info("")
 
         os.environ["TURBODIR"] = turbodir
         os.environ["PATH"] += os.pathsep + turbodir + '/scripts'
@@ -624,8 +632,6 @@ class TMcalculation:
             while shell.poll() is None:
                 sysname += shell.stdout.readline().strip()
         os.environ["PATH"] += os.pathsep + turbodir + f'/bin/{sysname}'
-
-        logger.info("FINISHED SETTING UP TURBOMOLE ENVIRONMENT")
 
 
 

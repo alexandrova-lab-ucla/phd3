@@ -11,6 +11,8 @@ setup(
         'console_scripts' : [
             'setupphd.py=phd3.bin.setupphd:main',
             'runphd.py=phd3.bin.runphd:main',
+            'submitphd.py=phd3.bin.submitphd:main',
+            'submitdmd.py=phd3.bin.submitdmd:main',
             'setupturbomole.py=phd3.bin.setupturbomole:main',
             'runturbomole.py=phd3.bin.runturbomole:main',
             'submitturbomole.py=phd3.bin.submitturbomole:main',

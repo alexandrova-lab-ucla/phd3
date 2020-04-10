@@ -28,7 +28,6 @@ class dmd_simulation:
             "_parameter_file", "_raw_parameters", "_commands", "_src_files" ]
 
     def __init__(self, cores: int = 1, run_dir: str='./', time=-1, pro: protein.Protein=None, parameters: dict=None):
-        logger.info("Beginning DMD calculation")
 
         logger.debug("Initializing variables")
         self._submit_directory = os.getcwd()
@@ -94,7 +93,7 @@ class dmd_simulation:
         # TODO check for any exceptions raised from setupDMDjob
         if pro is None:
             if not os.path.isfile("initial.pdb"):
-                logger.info("initial.pdb not found, will try setting up from scratch")
+                logger.debug("initial.pdb not found, will try setting up from scratch")
                 sj = setupDMDjob(parameters=self._raw_parameters)
 
         else:
@@ -157,7 +156,7 @@ class dmd_simulation:
 
         else:
             self._commands = {"1": {}}
-            logger.info("Commands passed, using those")
+            logger.debug("Commands passed, using those")
 
         if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
             logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
@@ -200,7 +199,7 @@ class dmd_simulation:
 
             # Grab the next step dictionary to do
             steps = self._commands[list(self._commands.keys())[0]]
-            logger.info(f"On step: {steps}")
+            logger.debug(f"On step: {steps}")
             updated_parameters = self._raw_parameters.copy()
 
             for changes in steps:
@@ -233,7 +232,7 @@ class dmd_simulation:
             logger.info("Did not finish all of the commands, will save the remaining commands")
 
         else:
-            logger.info("Finished all commands...writing final dmdinput.json")
+            logger.debug("Finished all commands...writing final dmdinput.json")
 
         logger.debug("Setting remaining commands to the rest of the commands")
         self._raw_parameters["Remaining Commands"] = self._commands
@@ -288,7 +287,6 @@ class dmd_simulation:
             for hdlr in old_handlers:
                 logger.addHandler(hdlr)
 
-        logger.info("Finished Calculation")
 
     def run_dmd(self, parameters, start_time: int, use_restart: bool):
         # Remake the start file with any changed parameters
@@ -302,20 +300,19 @@ class dmd_simulation:
 
         #Now we execute the command to run the dmd
         try:
-            logger.info(f"Issuing command: pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa")
-            logger.info("*****************************************************************************************************")
-            with Popen(f"pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa",
-                    stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
-                while shell.poll() is None:
-                    logger.info(shell.stdout.readline().strip())
-            logger.info("*****************************************************************************************************")
+            with open("dmd.out", 'a') as dmd_out:
+                logger.info(f"[Issuing command]  ==>> pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa")
+                with Popen(f"pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa",
+                        stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
+                    while shell.poll() is None:
+                        dmd_out.write(shell.stdout.readline().strip() + '\n')
+
         except OSError:
             logger.exception("Error calling pdmd.linux")
             raise
 
     @staticmethod
-    def get_average_energy(echo_file):
-        
+    def get_average_potential_energy(echo_file):
         if not os.path.isfile(echo_file):
             logger.error(f"Echo file does not exist: {echo_file}")
             raise FileNotFoundError("Echo File")
@@ -328,7 +325,7 @@ class dmd_simulation:
                     continue
 
                 line = line.split()
-                energies.append(float(line[3]))
+                energies.append(float(line[4]))
 
         ave = sum(energies)/len(energies)
 
@@ -340,6 +337,88 @@ class dmd_simulation:
         stdev = math.sqrt(stdev)
 
         return [ave, stdev] 
+
+    @staticmethod
+    def get_average_kinetic_energy(echo_file):
+        if not os.path.isfile(echo_file):
+            logger.error(f"Echo file does not exist: {echo_file}")
+            raise FileNotFoundError("Echo File")
+
+        energies = []
+
+        with open(echo_file, 'r') as echo:
+            for line in echo:
+                if line[0] == "#":
+                    continue
+
+                line = line.split()
+                energies.append(float(line[5]))
+
+        ave = sum(energies)/len(energies)
+
+        stdev = 0
+        for e in energies:
+            stdev += (e - ave)**2
+
+        stdev /= (len(energies)-1)
+        stdev = math.sqrt(stdev)
+
+        return [ave, stdev] 
+
+    @staticmethod
+    def get_average_temp_energy(echo_file):
+        if not os.path.isfile(echo_file):
+            logger.error(f"Echo file does not exist: {echo_file}")
+            raise FileNotFoundError("Echo File")
+
+        energies = []
+
+        with open(echo_file, 'r') as echo:
+            for line in echo:
+                if line[0] == "#":
+                    continue
+
+                line = line.split()
+                energies.append(float(line[1]))
+
+        ave = sum(energies)/len(energies)
+
+        stdev = 0
+        for e in energies:
+            stdev += (e - ave)**2
+
+        stdev /= (len(energies)-1)
+        stdev = math.sqrt(stdev)
+
+        return [ave, stdev] 
+
+    @staticmethod
+    def get_average_pressure_energy(echo_file):
+        if not os.path.isfile(echo_file):
+            logger.error(f"Echo file does not exist: {echo_file}")
+            raise FileNotFoundError("Echo File")
+
+        energies = []
+
+        with open(echo_file, 'r') as echo:
+            for line in echo:
+                if line[0] == "#":
+                    continue
+
+                line = line.split()
+                energies.append(float(line[2]))
+
+        ave = sum(energies)/len(energies)
+
+        stdev = 0
+        for e in energies:
+            stdev += (e - ave)**2
+
+        stdev /= (len(energies)-1)
+        stdev = math.sqrt(stdev)
+
+        return [ave, stdev] 
+
 
     def calculation_alarm_handler(self, signum, frame):
         """

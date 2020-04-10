@@ -1,4 +1,4 @@
-#!usr/bin/env python3
+#!/usr/bin/env python3
 
 import logging
 import argparse
@@ -28,6 +28,7 @@ def main():
     logger.debug("Proper arguments passed")
 
     try:
+        utilities.print_header()
         job = controller(cores=args.cores[0], time=args.time[0], scratch=args.scratch_directory[0])
 
     except:

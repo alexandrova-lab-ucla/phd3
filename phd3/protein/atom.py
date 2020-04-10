@@ -43,7 +43,13 @@ class Atom:
             return f"{ord(self.chain.name) - ord('A') + self.residue.inConstr_number}.1.{self.id.upper()}"
 
     def coord_line(self):
-        return f"    {self.coords[0] * constants.A_TO_BOHR:.5f} {self.coords[1] * constants.A_TO_BOHR:.5f} {self.coords[2] * constants.A_TO_BOHR:.5f} {self.element}{' f' if self.freeze else ''}\n"
+        if self.element.upper() == "ZN":
+            actual_element = self.ID
+
+        else:
+            actual_element = self.element
+
+        return f"    {self.coords[0] * constants.A_TO_BOHR:.5f} {self.coords[1] * constants.A_TO_BOHR:.5f} {self.coords[2] * constants.A_TO_BOHR:.5f} {actual_element}{' f' if self.freeze else ''}\n"
 
 
     def pdb_line(self):

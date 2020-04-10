@@ -8,6 +8,7 @@ import shutil
 import sys
 
 import phd3.iteration as iteration
+import phd3.bin.submitphd as submitphd
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +139,9 @@ class controller:
             logger.debug("Changing directory from {os.getcwd()} to {self._submit_directory}")            
             os.chdir(self._submit_directory)
         
-        if self._stop and self._iteration <= self._parameters["MAX Iteration"]:
+        if self._stop and self._iteration <= self._parameters["Max Iteration"]:
             if self._parameters["Resubmit"]:
-                #TODO have this call submit phd again!
-                pass
+                submitphd.main(_cores = self._cores, _time=self._time)
 
         elif self._iteration > self._parameters["Max Iterations"]:
             logger.info("Finished with all QM/DMD cyles")
@@ -165,29 +165,3 @@ class controller:
             if os.path.isfile(os.path.join(self._scratch, "phd_energy")):
                 shutil.copy(os.path.join(self._scratch, "phd_energy"), self._submit_directory)
             
-
-
-if __name__ == "__main__":
-
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-    c = controller(1 )
-
-    sys.exit(0)
-
-
-    par = {"last pdb": os.path.abspath("./HG3.pdb"),
-            "DMD CONVERGE": True,
-            "MAX DMD STEPS": 5,
-            "QM Chop":{
-                "Residues": ["A:49", "A:126", "A:43-A:46", "A:264"]
-                }
-            }
-
-    with open("dmdinput.json", 'r') as f:
-        par["dmd params"]= json.load(f)
-
-    with open("definput.json", 'r') as f:
-        par["qm params"] = json.load(f)
-
-    i = iteration.iteration( "iter_1", ".", par, 1)
-    i.continue_calculation()

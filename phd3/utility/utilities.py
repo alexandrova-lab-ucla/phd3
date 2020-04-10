@@ -47,6 +47,11 @@ def setup_turbomole_env(turbodir: str):
     :param turbodir: Directory where TURBOMOLE is installed
     """
     logger.debug("Setting up the TURBOMOLE environment")
+
+    if turbodir in os.environ["PATH"] and f"{turbodir}/scripts" in os.environ["PATH"]:
+        #Should already be setup
+        return
+    
     os.environ["TURBODIR"] = turbodir
     os.environ["PATH"] += os.pathsep + turbodir + '/scripts'
     os.environ["PATH"] += os.pathsep + turbodir
@@ -749,3 +754,58 @@ def load_movie(movie_file:str):
     return proteins
 
 
+def print_header():
+    main_logger = logging.getLogger("phd3")
+
+    main_logger.info("")
+    main_logger.info("==============================================================================")
+    main_logger.info("")
+    main_logger.info("                      _______  __   __  ______    _______ ")
+    main_logger.info("                     |       ||  | |  ||      |  |       |")
+    main_logger.info("                     |    _  ||  |_|  ||  _    | |___    |")
+    main_logger.info("                     |   |_| ||       || | |   |  ___|   |")
+    main_logger.info("                     |    ___||       || |_|   | |___    |")
+    main_logger.info("                     |   |    |   _   ||       |  ___|   |")
+    main_logger.info("                     |___|    |__| |__||______|  |_______|")
+    main_logger.info("")
+    main_logger.info("")
+    main_logger.info("--------------------[Protein Hybrid Discrete Dynamics/DFT]--------------------")
+    main_logger.info("")
+    main_logger.info("[Version]            ==>>    1.0.0")
+    main_logger.info("")
+    main_logger.info("[Idea and Director]  ==>>    Anastassia N. Alexandrova ")
+    main_logger.info("[Idea and Director]  ==>>    Manuel Sparta")
+    main_logger.info("[Program Developer]  ==>>    Matthew R. Hennefarth")
+#    main_logger.info("[Titrate Developer]  ==>>    David J. Reilley")
+    main_logger.info("")
+    main_logger.info("[Research Group]     ==>>    Alexandrova Research Group")
+    main_logger.info("                     ==>>    University of California, Los Angeles")
+    main_logger.info("")
+    main_logger.info("---------------------------------[References]---------------------------------")
+    main_logger.info("")
+    main_logger.info(">>>> Quantum Mechanics/Discrete Molecular Dynamics (QM/DMD) >>>>")
+    main_logger.info("==>> M. Sparta, D. Shirvanyants, F. Ding,") 
+    main_logger.info("     N. V. Dokholyan, A. N. Alexandrova")
+    main_logger.info("     Hybrid Dynamics Simulation Engine for Metalloproteins")
+    main_logger.info("     Biophys J. 103: 4 (2012)")
+ #   main_logger.info("")
+    main_logger.info("==>> N. M. Gallup, A. N. Alexandrova")
+    main_logger.info("     Use of QM/DMD as a Multiscale Approach to Modeling Metalloenzymes")
+    main_logger.info("     Methods Enzymol. 577 (2016)")
+    main_logger.info("")
+    main_logger.info(">>>> piDMD >>>>")
+    main_logger.info("==>> D. Shirvanyants, F. Ding, D. Tsao,")
+    main_logger.info("     S. Ramachandran, N. V. Dokholyan")
+    main_logger.info("     DMD: an Efficient and Versatile Simulation Method for Fine")
+    main_logger.info("     Protein Characterization")
+    main_logger.info("     J. Phys. Chem. 116: 29 (2012)")
+    main_logger.info("")
+    main_logger.info(">>>> TURBOMOLE >>>>")
+    main_logger.info("==>> R. Ahlrichs, M. Baer, M. Haeser, H. Horn,")
+    main_logger.info("     C. Koelmel")
+    main_logger.info("     Electronic structure calculations on workstation")
+    main_logger.info("     computers: the program system TURBOMOLE")
+    main_logger.info("     Chem. Phys. Lett. 162: 165 (1989)")
+    main_logger.info("")
+    main_logger.info("==============================================================================")
+    main_logger.info("")

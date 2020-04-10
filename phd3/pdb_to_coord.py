@@ -41,10 +41,11 @@ def addH(protein):
     logger.debug("Removing chimeraddh.com")
     os.remove("chimeraaddh.com")
     logger.debug("Removing _temp.pdb")
-#    os.remove("_temp.pdb")
+    os.remove("_temp.pdb")
 
     pro = utilities.load_pdb("addh.pdb")
-    pro.relabel(format="DMD")
+
+    pro.reformat_protein()
     logger.debug("Removing addh.pdb")
     os.remove("addh.pdb")
 
@@ -56,7 +57,6 @@ def protein_to_coord(protein, chop_params):
     
     #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
     protein = addH(protein)
-    protein.reformat_protein(relabel_protein=False)
 
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []

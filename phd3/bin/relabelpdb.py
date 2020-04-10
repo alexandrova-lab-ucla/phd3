@@ -48,7 +48,7 @@ def main():
 
     except ValueError:
         logger.error("Error in relabeling the protein")
-        sys.exit(1)
+        raise
 
     if args.outputFile != "":
         logger.debug(f"Changing protein name to {args.outputFile[0]}")

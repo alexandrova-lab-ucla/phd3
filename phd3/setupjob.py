@@ -253,11 +253,7 @@ class setupTMjob:
             logger.info(utilities.quote_me())
 
         else:
-            logger.info("#####################")
-            logger.info("##                 ##")
-            logger.info("##    SUCCESS!!    ##")
-            logger.info("##                 ##")
-            logger.info("#####################")
+            logger.info("[setup turbomole]        ==>> SUCCESS")
 
     # go back to the inital directory
         logger.debug(f"Moving back to initial directory: {self._initial_directory}")
@@ -904,11 +900,7 @@ class setupDMDjob:
         self.short_dmd()
         utilities.make_start_file(self._raw_parameters)
 
-        logger.info("#####################")
-        logger.info("##                 ##")
-        logger.info("##    SUCCESS!!    ##")
-        logger.info("##                 ##")
-        logger.info("#####################")
+        logger.info("[setup dmd]        ==>> SUCCESS")
 
     def short_dmd(self):
         try:
