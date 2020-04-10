@@ -560,31 +560,27 @@ class iteration:
             #sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
             end = timer()
 
-            if False:
-                if os.path.isfile("energy"):
-                    with open("energy", 'r') as energyFile:
-                        for i,l in enumerate(energyFile):
-                            pass
-                    
-                    if i < 2:
-                        logger.info(f"Singlepoint failed for {struct.name}")
-                        logger.info("Trying again")
-                        sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
-                        end = timer()
-
-                else:
-                    logger.error("NO ENERGY FILE FOUND")
-                    logger.error("THERE COULD BE AN ERROR WITH TURBOMOLE")
-                    raise OSError("Turbomole")
-
-                try:
-                    self.qm_sp_energies.append(qm_calcualtion.TMcalculation.get_energy(cycle=1))
+            if os.path.isfile("energy"):
+                with open("energy", 'r') as energyFile:
+                    for i,l in enumerate(energyFile):
+                        pass
                 
-                except IndexError:
-                    logger.error("Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
-                    self.qm_sp_energies.append(0.0)
+                if i < 2:
+                    logger.info(f"Singlepoint failed for {struct.name}")
+                    logger.info("Trying again")
+                    sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
+                    end = timer()
 
             else:
+                logger.error("NO ENERGY FILE FOUND")
+                logger.error("THERE COULD BE AN ERROR WITH TURBOMOLE")
+                raise OSError("Turbomole")
+
+            try:
+                self.qm_sp_energies.append(qm_calcualtion.TMcalculation.get_energy(cycle=1))
+            
+            except IndexError:
+                logger.error("Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
                 self.qm_sp_energies.append(0.0)
 
             logger.info(f"[QM Energy (Hart)] ==>> {self.qm_sp_energies[-1]:.5f}")
@@ -634,7 +630,6 @@ class iteration:
         logger.info("")
         logger.info("===================[Finished  QM SP]===================")
         self.next_step = self.qm_optimization
-        sys.exit(0)
 
     def qm_optimization(self):
         logger.info("===================[Beginning QM OP]===================")
@@ -659,14 +654,6 @@ class iteration:
         logger.debug("Changing directory to 'Optimization'")
         os.chdir("Optimization")
         
-        #Setup the tm loggers
-        tm_loggers = [logging.getLogger("phd3.setupjob"), logging.getLogger("phd3.qm_calculation")]
-        tm_out = logging.FileHandler("turbopy.out", 'w+')
-        for l in tm_loggers:
-            l.addHandler(tm_out)
-            l.setLevel(logging.INFO)
-            l.propagate = False
-
         if os.path.isfile("energy"):
             with open('energy', 'r') as energyFile:
                 for i,l in enumerate(energyFile):
@@ -756,7 +743,7 @@ class iteration:
 
             self.qm_final_energy = qm_calculation.TMcalculation.get_energy()
             logger.info("")
-            logger.info(" >>>> [Final QM Energy] >>>> {self.qm_final_energy}")
+            logger.info("[Final QM Energy] ==>> {self.qm_final_energy}")
             logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
 
         if self.stop:
