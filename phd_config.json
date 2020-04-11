@@ -1,0 +1,14 @@
+{
+  "PATHS" : {
+    "TURBODIR" : "/u/home/a/ana/TURBOMOLE",
+    "DMD_DIR" : "/u/home/m/mhennefa/matthewscripts/dmd/bin/",
+    "parameters" : "/u/home/m/mhennefa/matthewscripts/dmd/parameter/"   
+  },
+  "QUEUING" : {
+    "max_nodes" : 1,
+    "node_types" : [8, 16],
+    "max_time" : [336, 24],
+    "high_priority_nodes" : [],
+    "submit" : "qsub"
+  }
+}
