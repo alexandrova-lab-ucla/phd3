@@ -117,9 +117,9 @@ class controller:
             self._curr_iterat = iteration.iteration(f"Iteration_{self._iteration}", os.path.abspath("."), self._parameters, self._iteration, self._cores) 
             self._curr_iterat.continue_calculation()
             if self._stop:
-                self._iterations -=1
+                self._iteration -=1
 
-            self._iterations += 1
+            self._iteration += 1
 
         if self._time != -1:
             logger.debug("Turning off timer")

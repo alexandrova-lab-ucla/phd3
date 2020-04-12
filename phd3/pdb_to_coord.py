@@ -403,11 +403,13 @@ def coord_to_pdb(protein):
         logger.error("No label file found")
         raise FileNotFoundError("label")
 
+    protein = addH(protein)
+
     coord_lines = []
     labels = []
     with open("coord", 'r') as coord:
-        for line in coord_lines:
-            if line.beginswith("$coord"):
+        for line in coord:
+            if line.startswith("$coord"):
                 continue
         
             elif line[0] == '$':
@@ -418,7 +420,7 @@ def coord_to_pdb(protein):
     with open("label", 'r') as lblfile:
         for line in lblfile:
             labels.append(line.rstrip())
-     
+
     assert(len(coord_lines) == len(labels))
 
     coord_lines = [i.split() for i in coord_lines]

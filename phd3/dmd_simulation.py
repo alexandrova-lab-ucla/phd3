@@ -8,6 +8,8 @@ import signal
 import subprocess
 import sys
 import math
+from timeit import default_timer as timer
+import datetime
 from subprocess import Popen, PIPE
 
 import phd3.protein.protein as protein
@@ -205,7 +207,8 @@ class dmd_simulation:
             for changes in steps:
                 logger.debug(f"Updating {changes}: changing {updated_parameters[changes]} to {steps[changes]}")
                 updated_parameters[changes] = steps[changes]
-
+            
+            start = timer()
             if updated_parameters["titr"]["titr on"]:
                 # TODO check to see if we have a titratable object first and then decide if having this turned on is valid or not
                 logger.warning("Titratable feature cannot be turned on in the middle of a run")
@@ -222,6 +225,10 @@ class dmd_simulation:
             else:
                 # We can just run the job with no issues other than those raised from the above
                 self.run_dmd(updated_parameters, self._start_time, True)
+
+            end = timer()
+
+            self.print_summary(updated_parameters['Time'], )
 
             # Assuming we finished correctly, we pop off the last issue
             self._commands.pop(list(self._commands.keys())[0])
@@ -293,10 +300,15 @@ class dmd_simulation:
         utilities.make_start_file(parameters, start_time)
 
         if use_restart:
+            if os.path.isfile(self._raw_parameters["Restart File"]):
+                logger.info(f"[Restart File]     ==>> True")
+                logger.info(f"[Issuing command]  ==>>")
             state_file = self._raw_parameters["Restart File"] if os.path.isfile(self._raw_parameters["Restart File"]) else "state"
 
         else:
             state_file = "state"
+
+        logger.info(f"[Restart File]     ==>> {'True' if state_file == 'state' else 'False'}")
 
         #Now we execute the command to run the dmd
         try:
@@ -312,7 +324,7 @@ class dmd_simulation:
             raise
 
     @staticmethod
-    def get_average_potential_energy(echo_file):
+    def get_echo_data(echo_file)
         if not os.path.isfile(echo_file):
             logger.error(f"Echo file does not exist: {echo_file}")
             raise FileNotFoundError("Echo File")
@@ -325,8 +337,15 @@ class dmd_simulation:
                     continue
 
                 line = line.split()
-                energies.append(float(line[4]))
+                energies.append(line)
 
+        return energies
+
+    @staticmethod
+    def get_average_potential_energy(echo_file):
+        energies = self.get_echo_data(echo_file)
+
+        energies = [float(line[4]) for line in energies]
         ave = sum(energies)/len(energies)
 
         stdev = 0
@@ -340,20 +359,9 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_kinetic_energy(echo_file):
-        if not os.path.isfile(echo_file):
-            logger.error(f"Echo file does not exist: {echo_file}")
-            raise FileNotFoundError("Echo File")
+        energies = self.get_echo_data(echo_file)
 
-        energies = []
-
-        with open(echo_file, 'r') as echo:
-            for line in echo:
-                if line[0] == "#":
-                    continue
-
-                line = line.split()
-                energies.append(float(line[5]))
-
+        energies = [float(line[5]) for line in energies]
         ave = sum(energies)/len(energies)
 
         stdev = 0
@@ -365,22 +373,12 @@ class dmd_simulation:
 
         return [ave, stdev] 
 
+
     @staticmethod
     def get_average_temp_energy(echo_file):
-        if not os.path.isfile(echo_file):
-            logger.error(f"Echo file does not exist: {echo_file}")
-            raise FileNotFoundError("Echo File")
+        energies = self.get_echo_data(echo_file)
 
-        energies = []
-
-        with open(echo_file, 'r') as echo:
-            for line in echo:
-                if line[0] == "#":
-                    continue
-
-                line = line.split()
-                energies.append(float(line[1]))
-
+        energies = [float(line[1]) for line in energies]
         ave = sum(energies)/len(energies)
 
         stdev = 0
@@ -394,20 +392,9 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_pressure_energy(echo_file):
-        if not os.path.isfile(echo_file):
-            logger.error(f"Echo file does not exist: {echo_file}")
-            raise FileNotFoundError("Echo File")
+        energies = self.get_echo_data(echo_file)
 
-        energies = []
-
-        with open(echo_file, 'r') as echo:
-            for line in echo:
-                if line[0] == "#":
-                    continue
-
-                line = line.split()
-                energies.append(float(line[2]))
-
+        energies = [float(line[2]) for line in energies]
         ave = sum(energies)/len(energies)
 
         stdev = 0
@@ -418,6 +405,20 @@ class dmd_simulation:
         stdev = math.sqrt(stdev)
 
         return [ave, stdev] 
+
+    def print_summary(self, sim_time, wall_time):
+        pot_energy = self.get_average_potential_energy(self._raw_parameters['Echo File'])
+        kinetic = self.get_average_kinetic_energy(self._raw_parameters['Echo File'])
+        pressure = self.get_average_pressure_energy(self._raw_parameters['Echo File'])
+        temperature = self.get_average_temp_energy(self._raw_parameters['Echo File'])
+        
+        logger.info(f"[Ave. Pot. Energy] ==>> {pot_energy[0]:.5f} ({pot_energy[1]:.5f}) kcal/mol")
+        logger.info(f"[Ave. Kin. Energy] ==>> {kinetic[0]:.5f} ({kinetic[1]:.5f}) kcal/mol")
+        logger.info(f"[Ave. Tot. Energy] ==>> {(pot_energy[0] + kinetic[0]) / 2.0:.5f} kcal/mol")
+        logger.info(f"[Ave. Pressure   ] ==>> {pressure[0]:.5f} ({pressure[1]:.5f})")
+        logger.info(f"[Ave. Temperature] ==>> {temperature[0]:.5f} ({temperature[1]:.5f})")
+        logger.info(f"[Est. Phys. Time ] ==>> {sim_time*0.0000488882} ns")
+        logger.info(f"Time elapsed during DMD simulation: {datetime.timedelta(seconds = wall_time)}")
 
 
     def calculation_alarm_handler(self, signum, frame):

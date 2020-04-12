@@ -18,8 +18,11 @@ __all__=[
     'QUOTES',
     'ATOM_MASS',
     'Kb',
-    'H_TO_KCAL'
+    'H_TO_KCAL',
+    'MO_FILES'
 ]
+
+MO_FILES = ['mos', 'alpha', 'beta']
 
 AMINO_ACID_RESIDUES = ('ALA','ARG','ASN','ASP','CYS','GLN','GLU','GLY','HIS','ILE','LEU','LYS','MET','PHE','PRO','SER','THR','TRP','TYR','VAL')
 

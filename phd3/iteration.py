@@ -87,6 +87,13 @@ class iteration:
 
         if self.stop:
             logger.debug("Timer went off, we are ending this iteration early")
+        
+        if self.next_step is None:
+            logger.info("")
+            logger.info("+---------------------------------------------------------+")
+            logger.info(f"|                 ITERATION      {self.iter_number:0>2d} COMPLETE              |")
+            logger.info("+---------------------------------------------------------+")
+            logger.info("")
 
         #Now we go back to original directory
         logger.debug(f"Changing to iteration directory: {self.root_directory}")
@@ -106,15 +113,6 @@ class iteration:
             logger.info("====================[Finished  DMD]====================")
             return
 
-        def print_energy(energy, kinetic, pressure, temperature, time):
-            logger.info(f"[Ave. Pot. Energy] ==>> {energy[0]:.5f} ({energy[1]:.5f}) kcal/mol")
-            logger.info(f"[Ave. Kin. Energy] ==>> {kinetic[0]:.5f} ({kinetic[1]:.5f}) kcal/mol")
-            logger.info(f"[Ave. Tot. Energy] ==>> {(energy[0] + kinetic[0]) / 2.0:.5f} kcal/mol")
-            logger.info(f"[Ave.  Pressure  ] ==>> {pressure[0]:.5f} ({pressure[1]:.5f})")
-            logger.info(f"[Ave. Temperature] ==>> {temperature[0]:.5f} ({temperature[1]:.5f})")
-            logger.info(f"[Est. Phys. Time ] ==>> {self.parameters['dmd params']['Time']*0.0000488882} ns")
-            logger.info(f"Time elapsed during DMD simulation: {datetime.timedelta(seconds = time)}")
-
         #This tracks to see if we are done with the dmd simulations!
         finished = False
         dmd_average_energies = []
@@ -132,17 +130,14 @@ class iteration:
                 #Make sure that the directories are sorted
                 dirs.sort(key = lambda i: int(i.split("_")[-1]))
                 for i, d in enumerate(dirs):
-                    echo_lines = []
                     if not os.path.isfile(os.path.join(d, self.parameters['dmd params']['Echo File'])):
                         logger.info(f"Did not complete run {i+1}, removing directory and continuing")
                         shutil.rmtree(d)
                         continue
 
-                    with open(os.path.join(d, self.parameters['dmd params']['Echo File'])) as echo_file:
-                        for l in echo_file:
-                         echo_lines.append(l)
+                    echo_lines = dmd_simulation.load_echo_data(os.path.join(d, self.parameters['dmd params']['Echo File']))
 
-                    last_time = int(float(echo_lines[-1].split()[0]))
+                    last_time = int(float(echo_lines[-1][0]))
                     if last_time < self.parameters['dmd params']['Time']:
                         logger.info(f"Did not complete run {i+1}, removing directory and continuing")
                         shutil.rmtree(d)
@@ -182,9 +177,9 @@ class iteration:
 
                 else:
                     logger.info(">>>> Equilibrating structure >>>>")
-                    logger.info(f"[Starting Temp.]  ==>> {self.parameters['Equilibrate']['Initial Temperature']}")
-                    logger.info(f"[Ending Temp.]    ==>> {self.parameters['dmd params']['Initial Temperature']}")
-                    logger.info(f"[Time]            ==>> {self.parameters['Equilibrate']['Time']}")
+                    logger.info(f"[Starting Temp.]   ==>> {self.parameters['Equilibrate']['Initial Temperature']}")
+                    logger.info(f"[Ending Temp.]     ==>> {self.parameters['dmd params']['Initial Temperature']}")
+                    logger.info(f"[Time]             ==>> {self.parameters['Equilibrate']['Time']}")
                     logger.info("")
                     os.mkdir("equilibrate")
                     logger.debug("Changing directory to 'equilibrate'")
@@ -197,11 +192,7 @@ class iteration:
                     temp_params["Final Temperature"] = self.parameters['dmd params']['Initial Temperature']
                     temp_params["Time"] = self.parameters['Equilibrate']['Time']
 
-                    logger.debug("Begining dmd")
-                    start = timer()
                     calc = dmd_simulation(cores = self.cores, parameters = temp_params)
-                    end = timer()
-                    logger.info(f"Time elapsed during equilibration: {datetime.timedelta(seconds = int(end -start))}")
 
                     logger.debug("Changing directory to {os.getcwd()}")
                     os.chdir("..")
@@ -209,7 +200,7 @@ class iteration:
 
             if self.parameters["DMD CONVERGE"]:
                 logger.info("")
-                logger.info(">>>> Attempting to converge DMD simulations >>>>")
+                logger.info("Attempting to converge DMD simulations")
                 
                 while not self.stop and self.dmd_steps <= self.parameters["MAX DMD STEPS"]:
                     #TODO try and except the following
@@ -221,7 +212,7 @@ class iteration:
                         os.remove(os.path.join(f"dmdstep_{self.dmd_steps}", self.parameters["dmd params"]["Echo File"]))
                         os.remove(os.path.join(f"dmdstep_{self.dmd_steps}", self.parameters["dmd params"]["Movie File"]))
 
-                    elif os.path.isdir("equilibrate") and os.path.isdir(f"equilibrate/{self.parameters['dmd params']['Restart File']}"):
+                    elif os.path.isdir("equilibrate") and os.path.isfile(f"equilibrate/{self.parameters['dmd params']['Restart File']}"):
                         logger.debug("Copying equilibrate files to new dmd start")
                         shutil.copytree("equilibrate", f"dmdstep_{self.dmd_steps}")
                         logger.debug("Removing echo and movide file from new directory")
@@ -238,22 +229,15 @@ class iteration:
 
                     logger.info("")
                     logger.info(f">>>> Run {self.dmd_steps:0>2d} >>>>")
-                    start = timer()
                     calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"])
-                    #Harvest the time that the dmd run took
-                    end = timer()
 
                     curr_energy = dmd_simulation.get_average_potential_energy(self.parameters["dmd params"]["Echo File"])
-                    kinetic_energy = dmd_simulation.get_average_kinetic_energy(self.parameters["dmd params"]["Echo File"])
-                    press = dmd_simulation.get_average_pressure_energy(self.parameters["dmd params"]["Echo File"]) 
-                    temp = dmd_simulation.get_average_temp_energy(self.parameters["dmd params"]["Echo File"])
-                    #Prints nicely out what just happened
-                    print_energy(curr_energy, kinetic_energy, press, temp, int(end-start))
-                    
                     dmd_average_energies.append(curr_energy)
+
                     #if converged then break
                     if len(dmd_average_energies) >= 2:
-                        if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-2][1] and abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-1][1]:
+                        logger.info("[Delta Last Sim. ] ==>> {abs(curr_energy[0] - dmd_average_energies[-2][0]):.5f}")
+                        if self.dmd_converged():
                             logger.info("")
                             logger.info("Converence achieved!")
                             logger.info(f"Absolute delta in energy: {abs(curr_energy[0]-dmd_average_energies[-2][0]):.5f}")
@@ -291,17 +275,9 @@ class iteration:
                 
                 logger.info("")
                 logger.info(">>>> Run 01 >>>>")
-                
-                start = timer()
                 calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"])
-                end = timer()
                 self.final_dmd_average_energy = dmd_simulation.get_average_potential_energy()
-                kinetic_energy = dmd_simulation.get_average_kinetic_energy(self.parameters["dmd params"]["Echo File"])
-                press = dmd_simulation.get_average_pressure_energy(self.parameters["dmd params"]["Echo File"]) 
-                temp = dmd_simulation.get_average_temp_energy(self.parameters["dmd params"]["Echo File"])
-                #Prints nicely out what just happened
-                print_energy(curr_energy, kinetic_energy, press, temp, int(end-start))
-
+        
         if self.stop:
             logger.info("Stop signal received while performing DMD simulation")
         
@@ -341,29 +317,18 @@ class iteration:
             #convert movie to a movie.pdb file
             logger.debug("Making movie.pdb")
             utilities.make_movie("initial.pdb", self.parameters["dmd params"]["Movie File"], "movie.pdb")
-
             logger.debug("Loading in movie.pdb")
             self.dmd_structures = utilities.load_movie("movie.pdb")
 
-            dmd_structures_energies = []
-            if not os.path.isfile(self.parameters['dmd params']['Echo File']):
-                logger.error("No echo file! Cannot properly cluster")
-                raise FileNotFoundError("Echo File")
-
-            with open(self.parameters['dmd params']['Echo File']) as echo_file:
-                for line in echo_file:
-                    if line[0] != '#':
-                        line = line.split()
-                        dmd_structures_energies.append(float(line[4]))
-
+            dmd_structures_energies = [float(line[4]) for line in dmd_simulation.get_echo_data(self.parameters['dmd params']['Echo File']]
             #Now we are done
             self.dmd_structures = list(zip(self.dmd_structures, dmd_structures_energies))
 
             os.remove("movie.pdb")
             os.chdir("../")
 
-            self.next_step = self.cluster
 
+        self.next_step = self.cluster
         logger.info("")
         logger.info("====================[Finished  DMD]====================")
 
@@ -504,11 +469,14 @@ class iteration:
             os.chdir(f"sp_{struct.name}")
 
             #TODO we should really make this adaptable for orca, lets say...
+            #Make a base setupQM object, have orca and TM inherit (overlap on interface funcs)
+            #Same for the executation (running the job)
             if os.path.isfile("energy"):
                 with open("energy", 'r') as energyFile:
                     for i,l in enumerate(energyFile):
                         pass
-
+                
+                #recall that i goes 0 -> 1 -> 2, so if i = 2, there are 3 lines => an energy!
                 if i >= 2:
                     self.qm_sp_energies.append(qm_calculation.TMcalculation.get_energy(cycle=1))
                     logger.info(f"[QM Energy (Hart)] ==>> {self.qm_sp_energies[-1]:.5f}")
@@ -521,6 +489,7 @@ class iteration:
 
             if not os.path.isfile("control"):
                 logger.debug("Setting up TM job")
+                #we set timeout to 0 so that we don't have a weird define error from timout in the middle of a job
                 sj = setupTMjob(parameters = self.parameters["qm params"], timeout=0)
 
                 dirs = [d for d in os.listdir("../") if os.path.isdir(os.path.join("../", d)) and "sp_movie_" in d]
@@ -532,20 +501,11 @@ class iteration:
 
                     sp_directory = os.path.join("../", sp_directory)
                     found_mos = False
-                    if os.path.isfile(os.path.join(sp_directory, "mos")):
-                        logger.debug("Copying over mos files")
-                        found_mos = True
-                        shutil.copy(os.path.join(sp_directory, "mos"), "./mos")
-
-                    if os.path.isfile(os.path.join(sp_directory, "alpha")):
-                        logger.debug("Copying over alpha files")
-                        found_mos = True
-                        shutil.copy(os.path.join(sp_directory, "alpha"), "./alpha")
-                    
-                    if os.path.isfile(os.path.join(sp_directory, "beta")):
-                        logger.debug("Copying over beta files")
-                        found_mos = True
-                        shutil.copy(os.path.join(sp_directory, "beta"), "./beta")
+                    for mo_file in constants.MO_FILES:
+                        if os.path.isfile(os.path.join(sp_directory, mo_file)):
+                            logger.debug(f"Copying over {mo_file} file")
+                            found_mos = True
+                            shutil.copy(os.path.join(sp_directory, mo_file), f"./{mo_file}")
 
                     if found_mos:
                         break
@@ -557,7 +517,7 @@ class iteration:
             qm_params = self.parameters["qm params"].copy()
             qm_params["calculation"] = 'sp'
             start = timer()
-            #sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
+            sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
             end = timer()
 
             if os.path.isfile("energy"):
@@ -581,6 +541,7 @@ class iteration:
             
             except IndexError:
                 logger.error("Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
+                logger.error("Structure may be very weird, continuing to next structure")
                 self.qm_sp_energies.append(0.0)
 
             logger.info(f"[QM Energy (Hart)] ==>> {self.qm_sp_energies[-1]:.5f}")
@@ -595,7 +556,7 @@ class iteration:
         logger.info("")
         logger.info(">>>> Scoring Structures >>>>")
 
-        #We are done with all sp calculations now
+        #We are done with all sp calculations now, onto scoring the structures
         min_dmd = min([d[1] for d in self.sp_PDB_structures])
         min_qm = min(self.qm_sp_energies)
 
@@ -643,6 +604,7 @@ class iteration:
         qm_params = self.parameters["qm params"].copy()
         qm_params["calculation"] = 'geo'
 
+        #Keeps track of total QM optimization steps taken
         total_cycles = 0
 
         if os.path.isdir("Optimization"):
@@ -651,7 +613,7 @@ class iteration:
         else:
             os.mkdir("Optimization")
         
-        logger.debug("Changing directory to 'Optimization'")
+        logger.debug("Changing directory to Optimization")
         os.chdir("Optimization")
         
         if os.path.isfile("energy"):
@@ -682,20 +644,11 @@ class iteration:
                 possible_sp_dir = "../sp_" + self.pdb_winner[0].name
                 found_mos = False
                 if os.path.isdir(possible_sp_dir):
-                    if os.path.isfile(os.path.join(possible_sp_directory), "mos"):
-                        logger.debug("Copying over mos files")
-                        found_mos = True
-                        shutil.copy(os.path.join(possible_sp_directory), "mos", "./mos")
-
-                    if os.path.isfile(os.path.join(possible_sp_directory), "alpha"):
-                        logger.debug("Copying over alpha files")
-                        found_mos = True
-                        shutil.copy(os.path.join(possible_sp_directory), "alpha", "./alpha")
-                    
-                    if os.path.isfile(os.path.join(possible_sp_directory), "beta"):
-                        logger.debug("Copying over beta files")
-                        found_mos = True
-                        shutil.copy(os.path.join(possible_sp_directory), "beta", "./beta")
+                    for mo_file in constants.MO_FILES:
+                        if os.path.isfile(os.path.join(possible_sp_directory, mo_file)):
+                            logger.debug(f"Copying over {mo_file} file")
+                            found_mos = True
+                            shutil.copy(os.path.join(possible_sp_directory, mo_file), f"./{mo_file}")
 
                 else:
                     #Check for any of these directories actually...
@@ -704,20 +657,11 @@ class iteration:
                     
                     for sp_directory in dirs:
                         sp_directory = os.path.join("../", sp_directory)
-                        if os.path.isfile(os.path.join(sp_directory), "mos"):
-                            logger.debug("Copying over mos files")
-                            found_mos = True
-                            shutil.copy(os.path.join(sp_directory), "mos", "./mos")
-
-                        if os.path.isfile(os.path.join(sp_directory), "alpha"):
-                            logger.debug("Copying over alpha files")
-                            found_mos = True
-                            shutil.copy(os.path.join(sp_directory), "alpha", "./alpha")
-                        
-                        if os.path.isfile(os.path.join(sp_directory), "beta"):
-                            logger.debug("Copying over beta files")
-                            found_mos = True
-                            shutil.copy(os.path.join(sp_directory), "beta", "./beta")
+                        for mo_file in constants.MO_FILES:
+                            if os.path.isfile(os.path.join(possible_sp_directory, mo_file)):
+                                logger.debug(f"Copying over {mo_file} file")
+                                found_mos = True
+                                shutil.copy(os.path.join(sp_directory, mo_file), f"./{mo_file}")
 
                         if found_mos:
                             break
@@ -741,16 +685,18 @@ class iteration:
                 logger.error("THERE COULD BE AN ERROR WITH TURBOMOLE")
                 raise OSError("Turbomole")
 
+        if self.stop:
+            logger.debug("Stop received while doing optimization calculation")
+        
+        else:
             self.qm_final_energy = qm_calculation.TMcalculation.get_energy()
             logger.info("")
             logger.info("[Final QM Energy] ==>> {self.qm_final_energy}")
             logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
-
-        if self.stop:
-            logger.debug("Stop received while doing optimization calculation")
         
         #Now we reinstall the coords into the protein!
         self.to_next_iteration = pdb_to_coord.coord_to_pdb(self.pdb_winner[0])
+
 
         #Now we reinstall into the protein
         logger.debug(f"Changing directory to {os.path.abspath('..')}")
@@ -759,25 +705,22 @@ class iteration:
         self.to_next_iteration.write_pdb("to_next_iteration.pdb")
         self.next_step = self.finish_iteration
       
-        #Cleanup the loggers
-        for l in tm_loggers:
-            del l
-
-        del tm_loggers
-
         logger.info("")
         logger.info("===================[Finished  QM OP]===================")
 
 
     def finish_iteration(self):
+        logger.info("=====================[Saving Data]=====================")
+        logger.info("")
+        
         logger.debug("Saving energies to phd_energy")
         if self.to_next_iteration is None:
             logger.error("No final PDB structure!")
             raise ValueError("No final PDB structure")
 
+        outfile_lines = []
         if os.path.isfile(os.path.join(self.root_directory, "phd_energy")):
             #Just append
-            outfile_lines = []
             with open(os.path.join(self.root_directory, "phd_energy"), 'r') as outfile:
                 for line in outfile:
                     outfile_lines.append(line)
@@ -789,21 +732,18 @@ class iteration:
                 outfile_lines.pop()
                 prev_iter = [int(i.split()[0]) for i in outfile_lines][-1]
             
-            outfile_lines.append(f"{self.iter_number:0>2d}            {self.qm_final_energy:.5f}            {self.pdb_winner[1]:.5f}\n")
-
-            with open(os.path.join(self.root_directory, "phd_energy"), 'w') as outfile:
-                outfile.write(first_line)
-                for line in outfile_lines:
-                    outfile.write(line)
-
         else:
-            with open(os.path.join(self.root_directory, "phd_energy")) as outfile:
-                outfile.write("[Iteration]        [QM Energy (Hart)]        [DMD Energy (kcal)]\n")
-                outfile.write(f"{self.iter_number:0>2d}            {self.qm_final_energy:.5f}            {self.pdb_winner[1]:.5f}\n")
-        
+            outfile_lines.append("[Iteration]        [QM Energy (Hart)]        [DMD Energy (kcal)]\n")
+
+        outfile_lines.append(f"{self.iter_number:0>2d}            {self.qm_final_energy:.5f}            {self.pdb_winner[1]:.5f}\n")
+        with open(os.path.join(self.root_directory, "phd_energy"), 'w') as outfile:
+            for line in outfile_lines:
+                outfile.write(line)
 
         #TODO clean up the iteration directory
 
+        logger.info("")
+        logger.info("=====================[Data  Saved]=====================")
         self.next_step = None
 
 
@@ -813,9 +753,15 @@ class iteration:
 
         #Create a stop file for the geometry optimization...otherwise, just have to wait for it to stop itself
         if self.next_step == self.qm_optimization:
+            logger.info("MAKING STOP FILE")
             with open(os.path.join(self.directory, "Optimization/stop"), 'w') as stopfile:
                 pass
 
 
+    def dmd_converged(self):
+        if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-2][1]:
+            if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-1][1]:
+                return True
 
+        return False
 
