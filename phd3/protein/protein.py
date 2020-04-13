@@ -18,7 +18,7 @@ __all__=[
 
 class Protein:
 
-    __slots__ = ['chains', '_logger', 'non_residues', 'metals', 'name', 'sub_chain']
+    __slots__ = ['chains', '_logger', 'non_residues', 'metals', 'name', 'sub_chain', 'coords']
 
     def __init__(self, name: str, chains: [chain.Chain]):
 
@@ -30,6 +30,7 @@ class Protein:
         self.non_residues = []
         self.metals = []
         self.sub_chain = chain.Chain()
+        self.coords = None
 
         self._logger.debug(f"Created protein {str(self)}")
 
@@ -400,22 +401,20 @@ class Protein:
                 self._logger.debug(f"Relabeling residue: {residue.name} {residue.number}")
                 rename_residue(residue)
 
+    #TODO, better way of determinging what is 'bound' to the metal my guess.
     def atoms_near_metal(self, metal, cutoff = 3.05):
-        atom_list = []
-        for chain in self.chains[:-1]:
-            for residue in chain.residues:
-                for atom in residue.atoms:
-                    if atom.element in constants.HEAVY_ATOMS:
-                        if np.linalg.norm(atom.coords - metal.coords) < cutoff:
-                            atom_list.append(atom)
+        atom_list = [atom for c in self.chains[:-1]\
+                            for r in c.residues\
+                                for atom in r.atoms\
+                                if atom.element in constants.HEAVY_ATOMS\
+                                and np.linalg.norm(atom.coords - metal.coords) < cutoff]
 
         if not self.sub_chain.residues:
-            for residue in self.chains[-1].residues:
-                for atom in residue.atoms:
-                    if atom.element in constants.HEAVY_ATOMS:
-                        if np.linalg.norm(atom.coords - metal.coords) < cutoff:
-                            atom_list.append(atom)
-
+            atom_list.extend([atom for r in self.chains[-1].residues\
+                                    for atom in r.atoms\
+                                        if atom.element in constants.HEAVY_ATOMS\
+                                        and np.linalg.norm(atom.coords - metal.coords) < cutoff])
+       
         return atom_list
 
     def make_bond_table(self):
@@ -436,11 +435,7 @@ class Protein:
             self._logger.error("Could not create {residue.name} mol2 file!")
             raise OSError("mol2_file")
 
-        atom_list = []
-        for chain in self.chains:
-            for residue in chain.residues:
-                for atom in residue.atoms:
-                    atom_list.append(atom)
+        atom_list = [atom for c in self.chains for r in c.residues for atom in r.atoms]
 
         with open("bond.mol2") as mol_file:
             bond_section = False
@@ -457,47 +452,21 @@ class Protein:
         os.remove("bond.pdb")
         os.remove("bond.mol2")
 
-    def center(self):
-        cen = np.array([0.0, 0.0, 0.0])
-        num_atoms = 0
-
-        for chain in self.chains:
-            for residue in chain.residues:
-                for atom in residue.atoms:
-                    cen += atom.coords
-                    num_atoms += 1
-
-        try:
-            cen = cen / num_atoms
+    def get_coords(self):
+        if self.coords is None:
+            self.coords = [atom.coords for chain in self.chains for residue in chain.residues for atom in residue.atoms]
         
-        except ZeroDivisionError:
-            self._logger.error("No atoms, cannot get center")
-            raise
+        return self.coords
         
-        return cen
-
     def aa_rmsd(self, pro):
         
+        if pro is self:
+            return 0.0
+
         #Makes it easier to work with this sort of stuff
-        this_atoms = []
-        for chain in self.chains:
-            for residue in chain.residues:
-                this_atoms.extend(residue.atoms)
 
-        this_center = self.center()
-        this_coords = [a.coords.copy() - this_center for a in this_atoms]
-        this_coords = np.array(this_coords)
-
-
-        other_atoms = []
-        for chain in pro.chains:
-            for residue in chain.residues:
-                other_atoms.extend(residue.atoms)
-
-        other_center = pro.center()
-        other_coords = [a.coords.copy() - other_center for a in other_atoms]
-        other_coords = np.array(other_coords)
-
+        this_coords = self.get_coords() - np.average(self.get_coords(), axis=0)
+        other_coords = pro.get_coords() - np.average(pro.get_coords(), axis=0)
 
         #Now the coords have been centered, now we can start the rotation
         assert(len(this_coords) == len(other_coords))
@@ -511,13 +480,11 @@ class Protein:
         if is_reflection:
             s[-1] = -s[-1]
 
-        E0 = sum(sum(this_coords*this_coords)) + sum(sum(other_coords*other_coords))
+        other_coords = np.dot(other_coords, np.dot(v,w))
+       
+        diff = other_coords - this_coords
 
-        rmsd_sq = (E0-2.0*sum(s)) / float(n_vec)
-        rmsd_sq = max([rmsd_sq, 0.0])
-
-        rmsd = np.sqrt(rmsd_sq)
-        return rmsd
+        return np.sqrt((diff*diff).sum()/ len(this_coords))
 
 
 

@@ -324,7 +324,7 @@ class dmd_simulation:
             raise
 
     @staticmethod
-    def get_echo_data(echo_file)
+    def get_echo_data(echo_file):
         if not os.path.isfile(echo_file):
             logger.error(f"Echo file does not exist: {echo_file}")
             raise FileNotFoundError("Echo File")
@@ -343,7 +343,7 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_potential_energy(echo_file):
-        energies = self.get_echo_data(echo_file)
+        energies = dmd_simulation.get_echo_data(echo_file)
 
         energies = [float(line[4]) for line in energies]
         ave = sum(energies)/len(energies)
@@ -359,7 +359,7 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_kinetic_energy(echo_file):
-        energies = self.get_echo_data(echo_file)
+        energies = dmd_simulation.get_echo_data(echo_file)
 
         energies = [float(line[5]) for line in energies]
         ave = sum(energies)/len(energies)
@@ -376,7 +376,7 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_temp_energy(echo_file):
-        energies = self.get_echo_data(echo_file)
+        energies = dmd_simulation.get_echo_data(echo_file)
 
         energies = [float(line[1]) for line in energies]
         ave = sum(energies)/len(energies)
@@ -392,7 +392,7 @@ class dmd_simulation:
 
     @staticmethod
     def get_average_pressure_energy(echo_file):
-        energies = self.get_echo_data(echo_file)
+        energies = dmd_simulation.get_echo_data(echo_file)
 
         energies = [float(line[2]) for line in energies]
         ave = sum(energies)/len(energies)

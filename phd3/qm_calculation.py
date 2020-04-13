@@ -6,6 +6,8 @@ import json
 import shutil
 import signal
 import logging
+from timeit import default_timer as timer
+import datetime
 from subprocess import Popen, PIPE, STDOUT
 
 from phd3.utility import utilities, exceptions, constants
@@ -201,9 +203,11 @@ class TMcalculation:
                 logger.info("Starting the timer")
                 signal.signal(signal.SIGALRM, self.calculation_alarm_handler)
                 signal.alarm((self._time_to_run * 60 - 45) * 60)
-                             
+            
+            start = timer()
             calc()
-            logger.info("Finished the TURBOMOLE job")
+            end = timer()
+            logger.info(f"Time elapsed: {datetime.timedelta(seconds = int(end -start))}")
             if self._time_to_run != -1:
                 # Turn off the timer now!
                 logger.info("Turning off timer")

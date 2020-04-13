@@ -615,7 +615,7 @@ class setupTMjob:
             logger.error(self._errstate)
             raise exceptions.DefineError
 
-        logger.info("Define Ended Normally")
+        logger.info("[Define] ==>> Ended Normally")
         logger.debug("Finished define")
 
 

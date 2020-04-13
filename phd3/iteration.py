@@ -8,9 +8,14 @@ import shutil
 import numpy as np
 import scipy.cluster
 import sys
+import time
 from timeit import default_timer as timer
 import datetime
-from sklearn import cluster
+import hdbscan
+import scipy
+
+import itertools
+from multiprocessing import sharedctypes, Process
 
 from phd3.dmd_simulation import dmd_simulation
 import phd3.qm_calculation as qm_calculation
@@ -18,6 +23,7 @@ import phd3.utility.utilities as utilities
 from phd3.setupjob import setupTMjob
 import phd3.utility.constants as constants
 import phd3.pdb_to_coord as pdb_to_coord
+import phd3.protein as protein
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +141,7 @@ class iteration:
                         shutil.rmtree(d)
                         continue
 
-                    echo_lines = dmd_simulation.load_echo_data(os.path.join(d, self.parameters['dmd params']['Echo File']))
+                    echo_lines = dmd_simulation.get_echo_data(os.path.join(d, self.parameters['dmd params']['Echo File']))
 
                     last_time = int(float(echo_lines[-1][0]))
                     if last_time < self.parameters['dmd params']['Time']:
@@ -320,7 +326,7 @@ class iteration:
             logger.debug("Loading in movie.pdb")
             self.dmd_structures = utilities.load_movie("movie.pdb")
 
-            dmd_structures_energies = [float(line[4]) for line in dmd_simulation.get_echo_data(self.parameters['dmd params']['Echo File']]
+            dmd_structures_energies = [float(line[4]) for line in dmd_simulation.get_echo_data(self.parameters['dmd params']['Echo File'])]
             #Now we are done
             self.dmd_structures = list(zip(self.dmd_structures, dmd_structures_energies))
 
@@ -353,35 +359,96 @@ class iteration:
                 self.sp_PDB_structures.append(self.dmd_structures[num])
 
         else:
-            # Create a zero  matrix of the appropriate size, will fill in with the RMSD between structures
-            distance_matrix = np.array([np.array([0.0 for i in self.dmd_structures]) for j in self.dmd_structures])
-
+            # Create an uninitialized  matrix of the appropriate size, will fill in with the RMSD between structures
             logger.info("Computing RMSD between all pairs of structures")
-            logger.info("")
-            # This is a symmetrix matrix
-            for row, first_structure in enumerate(self.dmd_structures):
-                for col in range(row, len(self.dmd_structures)):
-                    distance_matrix[row][col] = first_structure[0].aa_rmsd(self.dmd_structures[col][0])
-                    distance_matrix[col][row] = distance_matrix[row][col] 
+            distance_matrix = np.empty([len(self.dmd_structures), len(self.dmd_structures)], dtype=float)
+            np.fill_diagonal(distance_matrix, 0.0)
+            logger.info(f"[Cores]             ==>> {self.cores}")
             
-            #Sets up
-            assert(self.parameters["Number of Clusters"] > 2)
-            agg = cluster.AgglomerativeClustering(n_clusters=self.parameters["Number of Clusters"], affinity='precomputed', linkage="average" )
+            start = timer()
+            
+            if self.cores > 1:
+                #There is a pretty large speed up from using multicore chunking of the jobs
+                #This works fairly well!
+                indexes = [(i, j) for i, j in itertools.product(range(0, len(self.dmd_structures)), range(0, len(self.dmd_structures)))]
+                index = np.array([a for a in indexes if a[0] < a[1]])
+                
+                #Now we have some chunks to pass to the function
+                chunked_index = np.array_split(index, self.cores)
+                
+                #This is used for no data racing, etc..
+                result = np.ctypeslib.as_ctypes(np.zeros((len(self.dmd_structures), len(self.dmd_structures) )))
+                shared_array = sharedctypes.RawArray(result._type_, result)
+                def computeRMSD(vals):
+                    tmp = np.ctypeslib.as_array(shared_array)
+                    for i, j in vals:
+                        tmp[i, j] = self.dmd_structures[i][0].aa_rmsd(self.dmd_structures[j][0])
+                        tmp[j, i] = tmp[i, j]
 
+                #start all the procs
+                procs = [Process(target=computeRMSD, args=(vals,)) for vals in chunked_index]
+                [p.start() for p in procs]
+                [p.join() for p in procs]
+
+                result = np.ctypeslib.as_array(shared_array)
+                distance_matrix = result 
+                
+
+            else:
+                for row, first_structure in enumerate(self.dmd_structures):
+                    for col, second_structure in enumerate(self.dmd_structures[row+1:]):
+                        distance_matrix[row][col] = first_structure[0].aa_rmsd(second_structure[0])
+                        distance_matrix[col][row] = distance_matrix[row][col] 
+
+            end = timer()
+            logger.info(f"Time elapsed during RMSD calculation: {datetime.timedelta(seconds = int(end -start))}")
+            
+            cluster_method = "HDBSCAN"
+            
+            logger.info("")
             logger.info(">>>> Cluster Parameters >>>>")
             logger.info(f"[Frames Collected]  ==>> {len(self.dmd_structures)}")
-            logger.info(f"[Num. of Clusters]  ==>> {self.parameters['Number of Clusters']}")
-            logger.info("[Cluster Method]    ==>> Agglomerative Clustering")
+            logger.info(f"[Cluster Method]    ==>> {cluster_method}")
             logger.info(f"[Minimum Energy]    ==>> {'true' if self.parameters['Cluster Energy'] else 'false'}")
             logger.info(f"[Cluster Centroid]  ==>> {'true' if self.parameters['Cluster Centroid'] else 'false'}")
             logger.info("")
+
+            start = timer()
+            output = hdbscan.HDBSCAN(metric='precomputed', core_dist_n_jobs=self.cores)
+            output.fit(distance_matrix)
+            end = timer()
             
-            #Actually cluster
-            output = agg.fit(distance_matrix)
+            num_clusters = len([x for x in set(output.labels_) if x >= 0])
+            logger.info(f"[Num. of Clusters]  ==>> {num_clusters}")
+            logger.info(f"Time elapsed during HDBSCAN clustering: {datetime.timedelta(seconds = int(end -start))}")
+            
+            #if num_clusters == 1:
+            if True:
+                logger.info("")
+                logger.info("Trying to cluster with single linkage hierachy")
+                logger.info(f"[Max Num. Clusters] ==>> 6")
+                logger.info("[Cluster Method]    ==>> Single Linkage Heirarchy")
+                logger.info("...") 
+                start = timer()
+                y = [i for j in distance_matrix for i in j if i > j]
+                Z = scipy.cluster.hierarchy.linkage(y)
+                cluster_labels = scipy.cluster.hierarchy.fcluster(Z, t=6, criterion='maxclust')
+                end = timer()
+                
+                num_clusters = len(set(cluster_labels))
+                logger.info(f"[Num. of Clusters]  ==>> {num_clusters}")
+                logger.info(f"Time elapsed during HDBSCAN clustering: {datetime.timedelta(seconds = int(end -start))}")
+
+
+            else:
+                cluster_labels = output.labels_
+
+            del distance_matrix
+            sys.exit(0)
 
             #Reformat so that we can work the various clusters
             clustered_structures = {}
-            for index in range(self.parameters["Number of Clusters"]):
+            for index in set(output.labels_):
                 clustered_structures[index] = []
                 for struct in zip(self.dmd_structures, output.labels_):
                     if struct[1] == index:
@@ -413,7 +480,7 @@ class iteration:
                             distance_matrix[row][col] = first_structure[0].aa_rmsd(self.dmd_structures[index][col][0])
                             distance_matrix[col][row] = distance_matrix[row][col] 
 
-                    rows_sums = [sum(i) for i in distance_matrix]
+                    rows_sums = [i.sum() for i in distance_matrix]
                     with_rows = list(zip(self.dmd_structures[index], rows_sums))
                     winner = min(with_rows, key = lambda i: i[1])
                     centroid_structures.append(winner[0])
@@ -495,6 +562,7 @@ class iteration:
                 dirs = [d for d in os.listdir("../") if os.path.isdir(os.path.join("../", d)) and "sp_movie_" in d]
                 dirs.sort(reverse = True, key=lambda i: int(i.split("_")[-1]))
                 
+                found_mos = False 
                 for sp_directory in dirs:
                     if os.path.abspath(os.path.join("..", sp_directory)) == os.path.abspath(os.getcwd()):
                         continue
@@ -537,7 +605,7 @@ class iteration:
                 raise OSError("Turbomole")
 
             try:
-                self.qm_sp_energies.append(qm_calcualtion.TMcalculation.get_energy(cycle=1))
+                self.qm_sp_energies.append(qm_calculation.TMcalculation.get_energy(cycle=1))
             
             except IndexError:
                 logger.error("Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
@@ -735,7 +803,7 @@ class iteration:
         else:
             outfile_lines.append("[Iteration]        [QM Energy (Hart)]        [DMD Energy (kcal)]\n")
 
-        outfile_lines.append(f"{self.iter_number:0>2d}            {self.qm_final_energy:.5f}            {self.pdb_winner[1]:.5f}\n")
+        outfile_lines.append(f"{self.iter_number:0>2d}                 {self.qm_final_energy:.5f}                 {self.pdb_winner[1]:.5f}\n")
         with open(os.path.join(self.root_directory, "phd_energy"), 'w') as outfile:
             for line in outfile_lines:
                 outfile.write(line)

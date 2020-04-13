@@ -35,6 +35,7 @@ cp phd3/resources/logger_config.json ~/.phd3/
 
 pip install --user ./ || exit 1
 echo "export PATH=$HOME/.local/bin:\$PATH" >> ~/.bashrc
+source ~/.bashrc
 echo ">>>> Successfully installed PHD3
 "
 
