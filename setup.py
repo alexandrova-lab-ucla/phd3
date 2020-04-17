@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="phd3",
     version="1.0.0",
-    author=["Matthew R. Hennefarth", "David J. Reilley"],
+    author=["Matthew R. Hennefarth", "David J. Reilley", "Jack T. Fuller"],
     package_data={'': ['*.json', '*.j2', '*.config']},
     packages=find_packages(),
     install_requires=[ 'jinja2', 'sklearn', 'propka', 'numpy'], 
