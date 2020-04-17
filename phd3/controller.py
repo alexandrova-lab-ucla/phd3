@@ -13,8 +13,8 @@ import shutil
 import sys
 
 #PHD Imports
-import phd3.iteration as iteration
-import phd3.bin.submitphd as submitphd
+from . import iteration
+from .bin import submitphd
 
 logger = logging.getLogger(__name__)
 

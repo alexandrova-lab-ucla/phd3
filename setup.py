@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 setup(
     name="phd3",
     version="1.0.0",
-    author=["Matthew R. Hennefarth", "David J. Reilley", "Jack T. Fuller"],
+    author=["Matthew R. Hennefarth", "David J. Reilley"],
     package_data={'': ['*.json', '*.j2', '*.config']},
     packages=find_packages(),
-    install_requires=[ 'jinja2', 'sklearn', 'propka', 'numpy'], 
+    install_requires=[ 'jinja2', 'sklearn', 'propka', 'numpy', 'hdbscan'], 
     entry_points = {
         'console_scripts' : [
             'setupphd.py=phd3.bin.setupphd:main',

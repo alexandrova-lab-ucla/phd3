@@ -5,7 +5,7 @@ Date    ==>> April 16, 2020
 """
 
 #PHD3 Imports
-import phd3.protein.residue as Residue
+from . import residue
 
 __all__=[
     'Chain'
@@ -19,7 +19,7 @@ class Chain:
         self.name = name
         self.residues = []
 
-    def add_residue(self, res: Residue):
+    def add_residue(self, res: residue.Residue):
         res.chain = self
         self.residues.append(res)
 

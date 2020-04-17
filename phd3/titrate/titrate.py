@@ -14,8 +14,8 @@ import pkg_resources
 import propka.molecular_container
 
 #Titrate/PHD3
-import phd3.titrate.montecarlo as montecarlo
-import phd3.utility.constants as constants
+from . import montecarlo
+from ..utility import constants
 
 logger = logging.getLogger(__name__)
 

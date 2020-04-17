@@ -18,7 +18,7 @@ import datetime
 from subprocess import Popen, PIPE
 
 #PHD3 Imports
-import phd3.protein.protein as protein
+import phd3.protein as protein
 import phd3.utility.utilities as utilities
 from phd3.setupjob import setupDMDjob
 from phd3.utility.exceptions import ParameterError

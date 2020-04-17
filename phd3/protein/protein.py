@@ -13,9 +13,8 @@ import numpy as np
 from subprocess import Popen, PIPE
 
 #PHD3 Imports
-import phd3.utility as constants
-import phd3.protein.chain as chain
-import phd3.protein.residue as residue
+from ..utility import constants
+from . import chain, residue
 
 __all__=[
     'Protein'

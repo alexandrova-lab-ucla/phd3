@@ -12,7 +12,7 @@ import numpy as np
 import random
 from itertools import combinations
 
-import phd3.titrate.titrate_data as DATA
+from . import titrate_data
 
 __all__ = [
         'process_pdb',
@@ -59,11 +59,11 @@ class titr_res:
 
         for atom in self.atoms: # Find protons and heteroatoms that define the titration state of the residue
             atom_name = self.ter_name + ':' + atom[0]
-            if atom_name in DATA.titr_form_prots:
+            if atom_name in titrate_data.titr_form_prots:
                 self.prots.append(atom)
                 titr_atoms.append(atom[0])
 
-            elif atom_name in DATA.titr_form_heteroatoms:
+            elif atom_name in titrate_data.titr_form_heteroatoms:
                 self.heteroatoms.append(atom)
                 titr_het_atoms.append(atom[0])
 
@@ -77,7 +77,7 @@ class titr_res:
             titr_atoms_ID += ':' + atom
 
         #print(self.full_name)
-        prot_state = DATA.prots2titr_form[titr_atoms_ID]
+        prot_state = titrate_data.prots2titr_form[titr_atoms_ID]
         prot_state = prot_state.split(':')
         self.prot_state = [prot_state[1], prot_state[2]]
 
@@ -145,7 +145,7 @@ def assess_pdb_line_format(pdb_in_lines): # Gives parsing scripts the correct po
         if len(line) > 20:
             if line.startswith('ATOM') or line.startswith('HETATM'): # Assess based on the first line about an atom in a titratable residue in the pdb
                 split_line = line.split()
-                if split_line[pdb_line_res_type] in DATA.titr_amino_acids_3let:
+                if split_line[pdb_line_res_type] in titrate_data.titr_amino_acids_3let:
                     if split_line[4] == 'A' or split_line[4] == 'B': # if the 5th column holds the chain rather than the residue number
                         pdb_line_chain = 4
                         pdb_line_res_num = 5
@@ -181,7 +181,7 @@ def process_pdb(pdb_lines):
         if len(line) > 20:
             if line.startswith('ATOM') or line.startswith('HETATM'):
                 split_line = line.split()
-                if split_line[pdb_line_res_type] in DATA.titr_amino_acids_3let:
+                if split_line[pdb_line_res_type] in titrate_data.titr_amino_acids_3let:
                     if split_line[pdb_line_res_num] != current_res:
                         if current_res != 0:
                             current_titr_res = titr_res(current_res_name, current_res, current_chain, current_res_allatoms)
@@ -202,7 +202,7 @@ def process_pdb(pdb_lines):
                     current_res_allatoms.append([split_line[pdb_line_atom_type], coord])
 
                 if hit_ter:
-                    if split_line[pdb_line_res_type] in DATA.amino_acids_3let:
+                    if split_line[pdb_line_res_type] in titrate_data.amino_acids_3let:
                         if pdb_line_chain is not None:
                             ter_res.append(split_line[pdb_line_res_type] + split_line[pdb_line_res_num] + split_line[pdb_line_chain])
                         
@@ -215,7 +215,7 @@ def process_pdb(pdb_lines):
         if len(line) >= 4:
             if line.startswith('TER'):
                 split_line = prev_line.split()
-                if split_line[pdb_line_res_type] in DATA.amino_acids_3let:
+                if split_line[pdb_line_res_type] in titrate_data.amino_acids_3let:
                     if pdb_line_chain is not None:
                         ter_res.append(split_line[pdb_line_res_type] + split_line[pdb_line_res_num] + split_line[pdb_line_chain])
                     
@@ -289,8 +289,8 @@ def define_connections(all_titr_res, int_cutoff):
                         next_atom[0].partners.append(atom[0])
                         atom[0].partners.append(next_atom[0])
                         
-                        if atom[0].amino_acid + ':' + atom[1][0] in DATA.cov_link_heteroatoms:
-                            if next_atom[0].amino_acid + ':' + next_atom[1][0] in DATA.cov_link_heteroatoms:
+                        if atom[0].amino_acid + ':' + atom[1][0] in titrate_data.cov_link_heteroatoms:
+                            if next_atom[0].amino_acid + ':' + next_atom[1][0] in titrate_data.cov_link_heteroatoms:
                                 atom[0].covalent_link = True
                                 next_atom[0].covalent_link = True
 
@@ -425,18 +425,18 @@ def MC_decide_solv(residue, resevoir_pH):
 
     if MC_prot_state_roll <= prob_add:
         if residue.prot_state[0] == '-': # If this is a change to protonation state, take proper action
-            possible_prot_states = DATA.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Add' + ':' + str(residue.prot_state[1])]
+            possible_prot_states = titrate_data.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Add' + ':' + str(residue.prot_state[1])]
             MC_prot_form_roll = random.randint(1, len(possible_prot_states))
             residue.new_prot_state = possible_prot_states[MC_prot_form_roll - 1][0]
             residue.change = ['Add', possible_prot_states[MC_prot_form_roll - 1][1]]
-            residue.change_heteroatom = DATA.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(residue.prot_state[1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
+            residue.change_heteroatom = titrate_data.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(residue.prot_state[1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
     else:
         if residue.prot_state[0] == '+': # If this is a change to protonation state, take proper action
-            possible_prot_states = DATA.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Remove' + ':' + str(residue.prot_state[1])]
+            possible_prot_states = titrate_data.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Remove' + ':' + str(residue.prot_state[1])]
             MC_prot_form_roll = random.randint(1, len(possible_prot_states))
             residue.new_prot_state = possible_prot_states[MC_prot_form_roll - 1][0]
             residue.change = ['Remove', possible_prot_states[MC_prot_form_roll - 1][1]]
-            residue.change_heteroatom = DATA.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(possible_prot_states[MC_prot_form_roll - 1][0][1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
+            residue.change_heteroatom = titrate_data.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(possible_prot_states[MC_prot_form_roll - 1][0][1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
 
 
     residue.change_prob = prob_add
@@ -470,11 +470,11 @@ def MC_decide_nosolv(network):
         if MC_prot_state_roll < current_prob_total and MC_prot_state_roll > previous_prob_total: # If the MC roll falls within the current state probability range, choose this state
             for residue in state[1]:
                 if residue.prot_state[0] == '-': # If this involves a protonation state change to this residue, update it
-                    possible_prot_states = DATA.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Add' + ':' + str(residue.prot_state[1])]
+                    possible_prot_states = titrate_data.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Add' + ':' + str(residue.prot_state[1])]
                     MC_prot_form_roll = random.randint(1, len(possible_prot_states))
                     residue.new_prot_state = possible_prot_states[MC_prot_form_roll - 1][0]
                     residue.change = ['Add', possible_prot_states[MC_prot_form_roll - 1][1]]
-                    residue.change_heteroatom = DATA.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(residue.prot_state[1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
+                    residue.change_heteroatom = titrate_data.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(residue.prot_state[1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
                 
                 if residue.prot_state[0] == '+': # If this is an unchanged residue, record that
                     unchanged_protonated_residues.append(residue)
@@ -484,9 +484,9 @@ def MC_decide_nosolv(network):
 
     for residue in network: # Go back around and update the residues losing protons
         if residue.prot_state[0] == '+' and residue not in unchanged_protonated_residues: # Remove protons from newly deprotonated residues
-            possible_prot_states = DATA.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Remove' + ':' + str(residue.prot_state[1])]
+            possible_prot_states = titrate_data.old_titr_form2new_titr_form[residue.ter_name + ':' + 'Remove' + ':' + str(residue.prot_state[1])]
             MC_prot_form_roll = random.randint(1, len(possible_prot_states))
             residue.new_prot_state = possible_prot_states[MC_prot_form_roll - 1][0]
             residue.change = ['Remove', possible_prot_states[MC_prot_form_roll - 1][1]]
-            residue.change_heteroatom = DATA.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(possible_prot_states[MC_prot_form_roll - 1][0][1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
+            residue.change_heteroatom = titrate_data.hydrogen2boundheteroatom[residue.ter_name + ':' + possible_prot_states[MC_prot_form_roll - 1][1][0] + ':' + str(possible_prot_states[MC_prot_form_roll - 1][0][1])] # Selects the first hydrogen if two are added (which only affects N-terminus)
 

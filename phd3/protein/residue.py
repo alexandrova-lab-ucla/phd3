@@ -5,8 +5,9 @@ Date    ==>> April 16, 2020
 """
 
 #PHD3 Imports
-import phd3.protein.atom as Atom
-import phd3.utility as constants
+from ..utility import constants
+
+#import phd3.utility.constants as constants
 
 #TODO have a heavy atom checker class to call a function that fixes
 # have it pipe out to a file first and then have setupjob.py call a protein function to call chimera swapaa function
@@ -32,7 +33,7 @@ class Residue:
         self.chain = None
         self.inConstr_number = self.number
 
-    def add_atom(self, atom: Atom):
+    def add_atom(self, atom):
         atom.residue = self
         atom.chain = self.chain
         self.atoms.append(atom)

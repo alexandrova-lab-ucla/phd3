@@ -17,12 +17,16 @@ import subprocess
 from random import shuffle
 
 #PHD3 Imports
-import phd3.protein.atom as atom
-import phd3.protein.chain as chain
-import phd3.protein.residue as residue
-import phd3.protein.protein as protein 
-from phd3.utility import constants
-from phd3.utility.exceptions import ParameterError
+from ..protein import atom, chain, residue, protein
+
+#import phd3.protein.atom as atom
+#import phd3.protein.chain as chain
+#import phd3.protein.residue as residue
+#import phd3.protein.protein as protein 
+from . import constants
+from .exceptions import ParameterError
+#from phd3.utility import constants
+#from phd3.utility.exceptions import ParameterError
 
 __all__=[
     'load_pdb',
