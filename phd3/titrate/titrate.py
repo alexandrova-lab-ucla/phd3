@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-#author: Matthew R. Hennefarth
+"""
+Author  ==>> David J. Reilley
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
 #Standard Library Imports
 import logging

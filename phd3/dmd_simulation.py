@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
+#Standard Library Imports
 import logging
 import os
 import shutil
@@ -12,6 +17,7 @@ from timeit import default_timer as timer
 import datetime
 from subprocess import Popen, PIPE
 
+#PHD3 Imports
 import phd3.protein.protein as protein
 import phd3.utility.utilities as utilities
 from phd3.setupjob import setupDMDjob

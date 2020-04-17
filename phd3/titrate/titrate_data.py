@@ -1,4 +1,8 @@
-#Author: David Reilley
+#!/usr/bin/env python3
+"""
+Author  ==>> David J. Reilley
+Date    ==>> April 16, 2020
+"""
 
 # Tabulated data used by Titratable-QM/DMD
 # DICTIONARY: number of letters of the alphabet for chains

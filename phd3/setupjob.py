@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
-"""Runs define and sets up a TURBOMOLE job through parameters in definput.json"""
-
-from __future__ import print_function
+#Standard Library Imports
 from subprocess import Popen, PIPE
 import subprocess
 import os
@@ -13,6 +15,7 @@ import pkg_resources
 import shutil
 import random
 
+#PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
 import phd3.protein.protein as protein
 

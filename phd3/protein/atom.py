@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
+#Standard Library Imports
 import numpy as np
 
+#PHD3 Imports
 import phd3.utility.constants as constants
 
 __all__=[

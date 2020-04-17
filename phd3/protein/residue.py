@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
+#PHD3 Imports
 import phd3.protein.atom as Atom
 import phd3.utility as constants
 

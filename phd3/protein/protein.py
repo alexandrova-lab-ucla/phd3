@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
-
+#Standard Library Imports
 import logging
 import pkg_resources
 import csv
@@ -8,6 +12,7 @@ import os
 import numpy as np
 from subprocess import Popen, PIPE
 
+#PHD3 Imports
 import phd3.utility as constants
 import phd3.protein.chain as chain
 import phd3.protein.residue as residue

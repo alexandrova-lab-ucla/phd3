@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-
-"""Setups, loads, and runs a QM/DMD iteration."""
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
 #Standard Library Imports
 import logging

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-
-"""Custom exceptions for the turbopy python package"""
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
 __all__ = [
     'Alarm',

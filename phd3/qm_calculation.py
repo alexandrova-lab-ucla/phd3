@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
+#Standard Library Impors
 import os
 import sys
 import json
@@ -10,10 +15,10 @@ from timeit import default_timer as timer
 import datetime
 from subprocess import Popen, PIPE, STDOUT
 
+#PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
 import phd3.setupjob 
 from phd3.bin import submitturbomole
-
 
 logger=logging.getLogger(__name__)
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
+#Standard Library Imports
 import logging
 import os
 import signal
@@ -7,6 +12,7 @@ import json
 import shutil
 import sys
 
+#PHD Imports
 import phd3.iteration as iteration
 import phd3.bin.submitphd as submitphd
 

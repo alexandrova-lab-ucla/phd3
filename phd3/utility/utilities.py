@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Date    ==>> April 16, 2020
+"""
 
-"""Utilities for the turbopy python package"""
-
+#Standard Library Imports
 import os
 import json
 import pkg_resources
@@ -13,11 +16,11 @@ from subprocess import Popen, PIPE
 import subprocess
 from random import shuffle
 
+#PHD3 Imports
 import phd3.protein.atom as atom
 import phd3.protein.chain as chain
 import phd3.protein.residue as residue
 import phd3.protein.protein as protein 
-
 from phd3.utility import constants
 from phd3.utility.exceptions import ParameterError
 

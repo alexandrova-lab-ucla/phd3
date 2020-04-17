@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> David J. Reilley
+Date    ==>> April 16, 2020
+"""
+
 
 #Standard Library Imports
 import logging

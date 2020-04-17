@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
+"""
+Author  ==>> Matthew R. Hennefarth
+Author  ==>> Jack T. Fuller
+Date    ==>> April 16, 2020
+"""
 
-"""Calculated the Free Energy correction from a Numforce calculation"""
-
+#Standard Library Imports
 import math
 import os
 import logging
 import subprocess
 
+#PHD3 Imports
 import phd3.utility.constants as constant
 from phd3.utility import utilities
 
