@@ -22,36 +22,48 @@
 
     "loggers" : {
         "phd3.setupjob" : {
-            "handlers": ["console"],
-            "level" : "DEBUG"
+            "handlers": [],
+            "level" : "INFO"
         },
         "phd3.qm_calculation" : {
-            "handlers": ["node_console"],
-            "level" : "DEBUG"
+            "handlers": [],
+            "level" : "INFO"
         },
         "phd3.dmd_simulation": {
-            "handlers": ["node_console"],
+            "handlers": [],
+            "level" : "INFO"
+        },
+        "phd3.free_energy":{
+            "handlers": [],
             "level" : "DEBUG"
         },
         "phd3.bin" : {
-            "handlers": ["console"],
+            "handlers": [],
             "level": "INFO"
         },
         "__main__": {
-            "handlers": ["console"],
-            "level": "DEBUG"
+            "handlers": [],
+            "level": "INFO"
         },
         "phd3.utility" : {
-            "handlers" : ["console"],
-            "level" : "DEBUG"
+            "handlers" : [],
+            "level" : "ERROR"
         },
         "phd3" : {
             "handlers" : ["console"],
             "level" : "INFO"
         },
         "phd3.protein" : {
-             "handlers": ["console"],
-            "level": "INFO"
+             "handlers": [],
+            "level": "ERROR"
+        },
+        "phd3.iteration":{
+            "handlers":[],
+            "level" : "INFO"
+        },
+        "phd3.controller":{
+            "handlers":[],
+            "level":"INFO"
         }
     },
     "handlers" : {
