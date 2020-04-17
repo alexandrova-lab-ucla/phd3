@@ -31,6 +31,9 @@ class Atom:
             self.coords = np.array([float(line[30:38]), float(line[38:46]), float(line[46:54])])
             self.id = line[12:16].strip().upper()
             self.number = int(line[6:11])
+            #Fix the formatting
+            self.element = self.element.capitalize()
+
 
         if self.element.lower() == 'eh':
             self.element = 'h'
@@ -50,7 +53,7 @@ class Atom:
 
     def coord_line(self):
         if self.element.upper() == "ZN":
-            actual_element = self.ID
+            actual_element = self.id
 
         else:
             actual_element = self.element
@@ -59,6 +62,12 @@ class Atom:
 
 
     def pdb_line(self):
+        if self.element.upper() == "ZN":
+            return '{:<6}{:>5} {:<4} {} {}{:>4}    {:>8.3f}{:>8.3f}{:>8.3f}  1.00  0.00          {:>2}\n'.format(
+              "HETATM",
+              self.number, self.id, self.residue.name, self.residue.chain.name, self.residue.number,
+              self.coords[0], self.coords[1], self.coords[2], self.element.capitalize())
+
         return '{:<6}{:>5} {:<4} {} {}{:>4}    {:>8.3f}{:>8.3f}{:>8.3f}  1.00  0.00          {:>2}\n'.format(
             'ATOM' if self.residue.name in constants.AMINO_ACID_RESIDUES else "HETATM",
             self.number, self.id if len(self.id) > 3 else f" {self.id}", self.residue.name, self.residue.chain.name, self.residue.number,

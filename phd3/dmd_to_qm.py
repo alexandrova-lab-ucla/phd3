@@ -14,7 +14,8 @@ from subprocess import Popen, PIPE
 #PHD3 Imports
 import phd3.utility.utilities as utilities 
 import phd3.utility.constants as constants
-import phd3.protein
+import phd3.protein as pro
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +95,14 @@ def protein_to_coord(protein, chop_params):
                 cutleft = 'n'
                 cutright = 'n'
 
-                if res1[-1].isalpha():
-                    cutleft = res1.pop().lower()
+                #Cannot pop the last thing...oh well
+                if res1[-1][-1].isalpha():
+                    cutleft = res1[-1][-1].lower()
+                    res1[-1] = res1[-1][:-1]
 
-                if res2[-1].isalpha():
-                    cutright = res2.pop().lower()
+                if res2[-1][-1].isalpha():
+                    cutright = res2[-1][-1]
+                    res2[-1] = res2[-1][:-1]
 
                 chain1 = res1[0]
                 res_num_1 = int(res1[1])
@@ -162,12 +166,9 @@ def protein_to_coord(protein, chop_params):
                 remove_bonds_from_list(a)
 
 
-    for a in remove_atoms:
-        atoms.remove(a)
-    
     if "Substrate Chop" in chop_params.keys():
         
-        remove_atoms = []
+        atoms_to_remove = []
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
         for chop in chop_params["Substrate Chop"]:
             chop = chop.split("-")
@@ -187,14 +188,13 @@ def protein_to_coord(protein, chop_params):
             for b in removeatom.bonds:
                 b.bonds.remove(removeatom)
                 
+            atoms_to_remove.append(removeatom)
             remove_atoms.append(removeatom)
             chop_atoms.append(keepatom, removeatom)
 
-        for a in remove_atoms:
+        for a in atoms_to_remove:
             remove_bonds_from_list(a)
             a.bonds = []
-
-        del remove_atoms
 
     for res in normal_residues:
         if res.name in constants.AMINO_ACID_RESIDUES:
@@ -212,9 +212,13 @@ def protein_to_coord(protein, chop_params):
                 for a in res.get_atom("C").bonds:
                     if a.id == "N":
                         res.get_atom("C").bonds.remove(a)
+            
+                if res.get_atom("CB") in res.get_atom("CA").bonds:
+                    res.get_atom("CA").bonds.remove(res.get_atom("CB"))
+                    res.get_atom("CB").bonds.remove(res.get_atom("CA"))
 
-                res.get_atom("CA").bonds.remove(res.get_atom("CB"))
-                res.get_atom("CB").bonds.remove(res.get_atom("CA"))
+                else:
+                    logger.warn(f"CB not bonded to CA in residue {res}")
 
                 #We do this so we don't remove the CA atom
                 for b in res.get_atom("CA").bonds:
@@ -247,8 +251,12 @@ def protein_to_coord(protein, chop_params):
                     nterm.get_atom("N").bonds.remove(a)
                     a.bonds.remove(nterm.get_atom("N"))
 
-            nterm.get_atom("CA").bonds.remove(nterm.get_atom("N"))
-            nterm.get_atom("N").bonds.remove(nterm.get_atom("CA"))
+            if nterm.get_atom("N") in nterm.get_atom("CA").bonds:
+                nterm.get_atom("CA").bonds.remove(nterm.get_atom("N"))
+                nterm.get_atom("N").bonds.remove(nterm.get_atom("CA"))
+        
+            else:
+                logger.warn(f"N not in CA bonds in residue {nterm}")
 
             #ensures that we don't remove the N atom...
             for b in nterm.get_atom("N").bonds:
@@ -279,7 +287,7 @@ def protein_to_coord(protein, chop_params):
             for b in cterm.get_atom("C").bonds:
                 b.bonds.remove(cterm.get_atom("C"))
 
-            remove_bronds_from_list(cterm.get_atom("C"))
+            remove_bonds_from_list(cterm.get_atom("C"))
             cterm.get_atom("C").bonds = []
 
             chop_atoms.append([cterm.get_atom("CA"), cterm.get_atom("C")])
@@ -314,7 +322,7 @@ def protein_to_coord(protein, chop_params):
             for a in res.get_atom("CB").bonds:
                 a.bonds.remove(res.get_atom("CB"))
 
-            remove_bronds_from_list(res.get_atom("CB"))
+            remove_bonds_from_list(res.get_atom("CB"))
             chop_atoms.append([res.get_atom("CA"), res.get_atom("CB")])
 
     if "Protonation" in chop_params.keys():
@@ -350,8 +358,11 @@ def protein_to_coord(protein, chop_params):
                     raise ValueError("protonate/deprotonate")
             
             if state[0] == "deprotonate":
-                remove.append(res.get_atom(hydrogen_atom))
-
+                for atom in res.atoms:
+                    if atom.id == hydrogen_atom:
+                        remove_atoms.append(atom)
+                        break 
+                
             if state[0] == "protonate":
                 #Need to actually compute some angles and place in an atom...
                 atom_to_protonate = res.get_atom(heavy_atom)
@@ -365,7 +376,9 @@ def protein_to_coord(protein, chop_params):
                 direction = -1.1* sum(vectors)
 
                 #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                atoms.append(protein.atom.Atom(element = "H", coords = atom_to_protonate.coords + direction, id='HY'))
+                atoms.append(pro.atom.Atom(element = "H", coords = atom_to_protonate.coords + direction, id='HY'))
+                res.add_atom(atoms[-1])
+
 
     #Make sure that the chops are not connected to each other
     for chop in chop_atoms:
