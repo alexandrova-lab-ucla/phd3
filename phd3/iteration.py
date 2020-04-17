@@ -1,29 +1,32 @@
 #!/usr/bin/env python3
 
-# This will be created on each iteration
+"""Setups, loads, and runs a QM/DMD iteration."""
 
+#Standard Library Imports
 import logging
 import os
 import shutil
 import numpy as np
-import scipy.cluster
 import sys
 import time
 from timeit import default_timer as timer
 import datetime
-import hdbscan
-import scipy
-
 import itertools
 from multiprocessing import sharedctypes, Process
 
+#3rd party libraries
+import hdbscan
+import scipy.cluster
+
+#phd libraries
 from phd3.dmd_simulation import dmd_simulation
 import phd3.qm_calculation as qm_calculation
 import phd3.utility.utilities as utilities
 from phd3.setupjob import setupTMjob
 import phd3.utility.constants as constants
-import phd3.pdb_to_coord as pdb_to_coord
+import phd3.dmd_to_qm as dmd_to_qm
 import phd3.protein as protein
+import phd3.utility.exceptions as exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +36,38 @@ __all__ = [
 
 class iteration:
 
+    """Upon creati"""
     def __init__(self, directory:str, root_dir:str, parameters:dict, iteration:int, cores=1):
+        
+        #Iteration directory, iteration number, root directory of job, number of cores to use, and parameters saved here
         self.directory = os.path.abspath(directory)
         self.iter_number = iteration
         self.root_directory = root_dir
         self.parameters = parameters
         self.cores = cores
-        self.stop = False #This checks to see if we have to stop!
+        
+        #Set to True if a timer went off, or we need to stop the iteration
+        self.stop = False
+        
+        #Final (ave pot. energy, stdev) from the DMD simulations
         self.final_dmd_average_energy = [0, 0]
+        
+        #Winning protein structure after scoring
         self.pdb_winner = None
+
+        #QM sp energies,. same order as self.dmd_structures
         self.qm_sp_energies = []
         self.scoring_energies = []
         self.qm_final_energy = 0.0
+
+        #Final, updated protein after QM optimization
         self.to_next_iteration = None
+        
+        #Stores the dmd structures from the final movie file
+        #Then cleared at end of clustering to free up memory
+        self.dmd_structures = None
+        #Holds the pdb structures that will move on SP analysis
+        self.sp_PDB_structures = None
 
         # Assign this to the correct next function step
         self.next_step = self.performDMD
@@ -69,10 +91,6 @@ class iteration:
             except FileExistsError:
                 logger.exception("Could not create directory!")
                 raise
-
-            self.dmd_structures = None
-            self.sp_PDB_structures = None
-            self.pdb_winner = None
 
         else:
             logger.info("Directory exists, loading in previous runs")
@@ -121,6 +139,7 @@ class iteration:
 
         #This tracks to see if we are done with the dmd simulations!
         finished = False
+        converged = False
         dmd_average_energies = []
         self.dmd_steps = 1
         if os.path.isdir("dmd"):
@@ -132,13 +151,20 @@ class iteration:
             os.chdir("dmd")
             if self.parameters["DMD CONVERGE"]:
                 dirs = [d for d in os.listdir() if "dmdstep_" in d]
-                self.dmd_steps = len(dirs)+1
+
                 #Make sure that the directories are sorted
                 dirs.sort(key = lambda i: int(i.split("_")[-1]))
+                rm_dirs = False
                 for i, d in enumerate(dirs):
-                    if not os.path.isfile(os.path.join(d, self.parameters['dmd params']['Echo File'])):
+                    if rm_dirs:
+                        shutil.rmtree(d)
+                        continue
+
+                    elif not os.path.isfile(os.path.join(d, self.parameters['dmd params']['Echo File'])):
                         logger.info(f"Did not complete run {i+1}, removing directory and continuing")
                         shutil.rmtree(d)
+                        #Want to remove any directories (if they exist) after this one! and start from here
+                        rm_dirs = True
                         continue
 
                     echo_lines = dmd_simulation.get_echo_data(os.path.join(d, self.parameters['dmd params']['Echo File']))
@@ -146,24 +172,32 @@ class iteration:
                     last_time = int(float(echo_lines[-1][0]))
                     if last_time < self.parameters['dmd params']['Time']:
                         logger.info(f"Did not complete run {i+1}, removing directory and continuing")
+                        rm_dirs = True
                         shutil.rmtree(d)
 
                     else:
                         ave, stdev = dmd_simulation.get_average_potential_energy(os.path.join(d, self.parameters["dmd params"]["Echo File"]))
                         dmd_average_energies.append([ave, stdev])
-                        logger.info(f"[Run {i+1:0>2d}] ==>> (finished)") 
+                        logger.info(f"[Run {i+1:0>2d}] ==>> {ave:0<12.5f} ({stdev:0<9.5f})(finished)") 
             
                 if len(dmd_average_energies) >= 2:
-                    if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-2][1] and abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-1][1]:
+                    #Check to see if we have previously converged
+                    if self.dmd_converged(dmd_average_energies):
                         logger.info("Convergence previously achieved")
                         logger.info(f"Absolute delta in energy: {abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]):.5f}")
+                        converged = True
                         finished = True
-                        self.dmd_steps -= 1
+                        self.final_dmd_average_energy = dmd_average_energies[-1] if dmd_average_energies[-1][0] < dmd_average_energies[-2][0] else dmd_average_energies[-2]
+               
+                #Check to see how many directories we have actually gone through now that we have removed them...
+                dirs = [d for d in os.listdir() if "dmdstep_" in d]
+                self.dmd_steps = len(dirs)+1
 
             else:
+                #We are not converging....check the echo file
                 if os.path.isfile(self.parameters["dmd params"]["Echo File"]) and os.path.isfile(self.parameters["dmd params"]["Movie File"]):
                     ave, stdev = dmd_simulation.get_average_potential_energy(self.parameters["dmd params"]["Echo File"])
-                    logger.info(f"[Run 01] ==>> (finished)")
+                    logger.info(f"[Run 01] ==>> {ave:0<12.5f} ({stdev:0<9.5f}) (finished)")
                     finished = True
   
         else:
@@ -171,6 +205,7 @@ class iteration:
             os.mkdir("dmd")
             logger.debug("Moving to dmd directory")
             os.chdir("dmd")
+            #This is set by the controller.py class, no need to worry too much about this...
             logger.debug("Moving the last step pdb to the new dmd directory")
             shutil.copy(self.parameters["last pdb"], "./dmdStart.pdb")
       
@@ -203,13 +238,14 @@ class iteration:
                     logger.debug("Changing directory to {os.getcwd()}")
                     os.chdir("..")
 
-
+            #If we are converging DMD, then we enter here into a nice loop
             if self.parameters["DMD CONVERGE"]:
                 logger.info("")
                 logger.info("Attempting to converge DMD simulations")
                 
                 while not self.stop and self.dmd_steps <= self.parameters["MAX DMD STEPS"]:
                     #TODO try and except the following
+                    #This allows us to use the previous step restart file if it exists
                     if os.path.isdir(f"dmdstep_{self.dmd_steps-1}"):
                         logger.debug(f"Copying {self.dmd_steps-1} files to new dmd start")
 
@@ -242,10 +278,11 @@ class iteration:
 
                     #if converged then break
                     if len(dmd_average_energies) >= 2:
-                        logger.info("[Delta Last Sim. ] ==>> {abs(curr_energy[0] - dmd_average_energies[-2][0]):.5f}")
-                        if self.dmd_converged():
+                        logger.info(f"[Delta Last Sim. ] ==>> {abs(curr_energy[0] - dmd_average_energies[-2][0]):.5f}")
+                        if self.dmd_converged(dmd_average_energies):
                             logger.info("")
                             logger.info("Converence achieved!")
+                            converged = True
                             logger.info(f"Absolute delta in energy: {abs(curr_energy[0]-dmd_average_energies[-2][0]):.5f}")
                             if dmd_average_energies[-2][0] < curr_energy[0]:
                                 logger.debug("Using previous energy")
@@ -269,6 +306,7 @@ class iteration:
                     os.chdir("..")
                     self.dmd_steps += 1
 
+            #Not converging the dmd simulations
             else:
                 if os.path.isdir("equilibrate"):
                     logger.debug("Copying equilibrate files to new dmd start")
@@ -288,7 +326,11 @@ class iteration:
             logger.info("Stop signal received while performing DMD simulation")
         
         else:
-            if self.dmd_steps > self.parameters["MAX DMD STEPS"]:
+            if converged:
+                logger.info("")
+                logger.info(f"DMD converged in: {self.dmd_steps} steps")
+
+            elif self.dmd_steps > self.parameters["MAX DMD STEPS"]:
                 logger.info("")
                 logger.info("Max DMD steps taken")
                 logger.info("Finding lowest Ave. Pot. Energy DMD simulation")
@@ -306,28 +348,36 @@ class iteration:
 
                 os.chdir("../")
 
+            #If we are supposed to converge, but for some reason left the cycle previously...major error most likely
+            #if this actually happens
             elif self.parameters["DMD CONVERGE"]:
-                logger.info("")
-                logger.info(f"DMD converged in: {self.dmd_steps} steps")
+                logger.warn("Unknown reason why we stopped the DMD cycle")
 
+            #Print out the summary of all the dmd cycles...could add some additional information here, but
+            #not really necessary
             logger.info("")
             logger.info(">>>> DMD Summary >>>>")
             logger.info("[RUN ##]---------[Ave Pot. Energy]---------[Est. Phys Time (ns)]---------")
             for index, energy in enumerate(dmd_average_energies):
-                out = f"[Run {index+1:0>2d}]      {energy[0]:.5f} ({energy[1]:.5f})\t\t{self.parameters['dmd params']['Time']*0.0000488882}"
+                out = f"[Run {index+1:0>2d}]      {energy[0]:0<12.5f} ({energy[1]:.5f})\t\t{self.parameters['dmd params']['Time']*0.0000488882}"
                 if energy == self.final_dmd_average_energy:
                     out += "    --w---w--"
                 
                 logger.info(out)
 
+            logger.info("")
+            logger.info("Loading in trajectory")
             #convert movie to a movie.pdb file
             logger.debug("Making movie.pdb")
+            logger.info("...")
             utilities.make_movie("initial.pdb", self.parameters["dmd params"]["Movie File"], "movie.pdb")
             logger.debug("Loading in movie.pdb")
+            #returns list of protein structures with movie_#### as the name of the protein
             self.dmd_structures = utilities.load_movie("movie.pdb")
 
             dmd_structures_energies = [float(line[4]) for line in dmd_simulation.get_echo_data(self.parameters['dmd params']['Echo File'])]
             #Now we are done
+            #A list of (protein, dmd energy), this way we can always get the dmd energy...could make that a member of the protein class actually...
             self.dmd_structures = list(zip(self.dmd_structures, dmd_structures_energies))
 
             os.remove("movie.pdb")
@@ -345,12 +395,13 @@ class iteration:
             logger.error("No DMD structures generated!")
             raise ValueError("No DMD structures")
 
+        #Need these here because when we print out summary, need these vars. to be at least initialized so that it
+        #doesn't throw an error
         min_structures = []
         centroid_structures = []
 
         if [d for d in os.listdir() if "movie_" in d]:
             logger.info("Loading in previous clustering results")
-            logger.info("")
             self.sp_PDB_structures = []
             for f in [d for d in os.listdir() if d.startswith("movie_") and os.path.isfile(d)]:
                 f = f.split("_")
@@ -361,12 +412,11 @@ class iteration:
         else:
             # Create an uninitialized  matrix of the appropriate size, will fill in with the RMSD between structures
             logger.info("Computing RMSD between all pairs of structures")
-            distance_matrix = np.empty([len(self.dmd_structures), len(self.dmd_structures)], dtype=float)
-            np.fill_diagonal(distance_matrix, 0.0)
             logger.info(f"[Cores]             ==>> {self.cores}")
-            
+            logger.info("...")
             start = timer()
-            
+           
+            #If I want to speed this up, I have to look at numba or numpy optimizations in the aa_rmsd func.
             if self.cores > 1:
                 #There is a pretty large speed up from using multicore chunking of the jobs
                 #This works fairly well!
@@ -392,9 +442,11 @@ class iteration:
 
                 result = np.ctypeslib.as_array(shared_array)
                 distance_matrix = result 
-                
+                del procs                
 
             else:
+                distance_matrix = np.zeros([len(self.dmd_structures), len(self.dmd_structures)], dtype=float)
+                #We just use the slow method of this...
                 for row, first_structure in enumerate(self.dmd_structures):
                     for col, second_structure in enumerate(self.dmd_structures[row+1:]):
                         distance_matrix[row][col] = first_structure[0].aa_rmsd(second_structure[0])
@@ -409,12 +461,14 @@ class iteration:
             logger.info(">>>> Cluster Parameters >>>>")
             logger.info(f"[Frames Collected]  ==>> {len(self.dmd_structures)}")
             logger.info(f"[Cluster Method]    ==>> {cluster_method}")
-            logger.info(f"[Minimum Energy]    ==>> {'true' if self.parameters['Cluster Energy'] else 'false'}")
-            logger.info(f"[Cluster Centroid]  ==>> {'true' if self.parameters['Cluster Centroid'] else 'false'}")
-            logger.info("")
+            logger.info(f"[Min. Cluster Size] ==>> {50}")
+            logger.info(f"[Min. Samples]      ==>> {25}")
+            logger.info("...")
 
+            #These clustering methods are incredibly fast in comparison to the agglomerative clustering
+            #Really no need to time these as they are practically instantaneous
             start = timer()
-            output = hdbscan.HDBSCAN(metric='precomputed', core_dist_n_jobs=self.cores)
+            output = hdbscan.HDBSCAN(metric='precomputed', core_dist_n_jobs=self.cores, min_cluster_size=50, min_samples=25)
             output.fit(distance_matrix)
             end = timer()
             
@@ -422,42 +476,51 @@ class iteration:
             logger.info(f"[Num. of Clusters]  ==>> {num_clusters}")
             logger.info(f"Time elapsed during HDBSCAN clustering: {datetime.timedelta(seconds = int(end -start))}")
             
-            #if num_clusters == 1:
-            if True:
+            if num_clusters > self.parameters["Max Clusters"]:
                 logger.info("")
+                logger.info("Too many clusters")
                 logger.info("Trying to cluster with single linkage hierachy")
-                logger.info(f"[Max Num. Clusters] ==>> 6")
+                logger.info("")
+                logger.info(">>>> Cluster Parameters >>>>")
+                logger.info(f"[Max Num. Clusters] ==>> {self.parameters['Max Clusters']}")
                 logger.info("[Cluster Method]    ==>> Single Linkage Heirarchy")
+                logger.info("[Cluster Criterion] ==>> Max Cluster")
                 logger.info("...") 
                 start = timer()
-                y = [i for j in distance_matrix for i in j if i > j]
+                y = [distance_matrix[j][i] for j in range(len(distance_matrix)) for i in range(j+1, len(distance_matrix))]
                 Z = scipy.cluster.hierarchy.linkage(y)
-                cluster_labels = scipy.cluster.hierarchy.fcluster(Z, t=6, criterion='maxclust')
+                cluster_labels = scipy.cluster.hierarchy.fcluster(Z, t=self.parameters['Max Clusters'], criterion='maxclust')
                 end = timer()
                 
                 num_clusters = len(set(cluster_labels))
                 logger.info(f"[Num. of Clusters]  ==>> {num_clusters}")
-                logger.info(f"Time elapsed during HDBSCAN clustering: {datetime.timedelta(seconds = int(end -start))}")
+                logger.info(f"Time elapsed during Single Linkage clustering: {datetime.timedelta(seconds = int(end -start))}")
 
 
             else:
-                cluster_labels = output.labels_
+                cluster_labels = output.labels_ 
 
-            del distance_matrix
-            sys.exit(0)
+            logger.info(f"[Minimum Energy]    ==>> {'true' if self.parameters['Cluster Energy'] else 'false'}")
+            logger.info(f"[Cluster Centroid]  ==>> {'true' if self.parameters['Cluster Centroid'] else 'false'}")
 
             #Reformat so that we can work the various clusters
             clustered_structures = {}
-            for index in set(output.labels_):
+            for index in set(cluster_labels):
+                #These are considered noise by the HDBSCAN
+                #So we don't necessarily care for them
+                if index == -1:
+                    continue
+
                 clustered_structures[index] = []
-                for struct in zip(self.dmd_structures, output.labels_):
+                for struct in zip(self.dmd_structures, cluster_labels):
                     if struct[1] == index:
                         clustered_structures[index].append(struct[0])
 
             #Now we can access the clusters by the keys in this dictionary
             # This is a dictionary, with values of a list of tuples (protein, dmd energy)
+            old_dmd_structures = self.dmd_structures.copy()
             self.dmd_structures = clustered_structures
-
+            
             #Get the minimum of each cluster
             self.sp_PDB_structures = []
             min_structures = []
@@ -471,15 +534,20 @@ class iteration:
             centroid_structures = []
             if self.parameters["Cluster Centroid"]:
                 for index in self.dmd_structures.keys():
+
                     #Want to find the structure that minimizes RMSD values with the rest of the cluster
-                    distance_matrix = np.array([np.array([0.0 for i in self.dmd_structures[index]]) for j in self.dmd_structures[index]])
+                    sub_distance_matrix = np.zeros((len(self.dmd_structures[index]), len(self.dmd_structures[index])))
 
-                   #Create another distance matrix...then find the sum of each row and take the minimum 
+                    #Extract the sub distance matrix for this cluster only
+                    #Too slow to reconstruct the distance matrix from scratch
                     for row, first_structure in enumerate(self.dmd_structures[index]):
-                        for col in range(row, len(self.dmd_structures[index])):
-                            distance_matrix[row][col] = first_structure[0].aa_rmsd(self.dmd_structures[index][col][0])
-                            distance_matrix[col][row] = distance_matrix[row][col] 
+                        first_structure_index = old_dmd_structures.index(first_structure)
+                        for col, second_structure in enumerate(self.dmd_structures[index][row+1:]):
+                            second_structure_index = old_dmd_structures.index(second_structure)
+                            sub_distance_matrix[row][col] = distance_matrix[first_structure_index][second_structure_index]
+                            sub_distance_matrix[col][row] = distance_matrix[row][col]
 
+                    #Find the one with the lowest average row sum...
                     rows_sums = [i.sum() for i in distance_matrix]
                     with_rows = list(zip(self.dmd_structures[index], rows_sums))
                     winner = min(with_rows, key = lambda i: i[1])
@@ -494,7 +562,13 @@ class iteration:
        
                 self.sp_PDB_structures.extend(min_structures)
 
+            #As we leave the final part, free up the memory...no longer needed
+            del distance_matrix
+            self.dmd_structures.clear()
+            old_dmd_structures.clear()
+
         #Print out choices, and save the files
+        logger.info("")
         logger.info(">>>> Final Structures >>>>")
         logger.info("[structure]-------[DMD Energy (kcal)]------------")
         #Saving the structures in case we have to restart
@@ -515,7 +589,6 @@ class iteration:
 
     def qm_singlepoints(self):
         logger.info("===================[Beginning QM SP]===================")
-        logger.info("")
 
         if self.sp_PDB_structures is None or len(self.sp_PDB_structures) == 0:
             logger.error("No PDB structures for single point calculations")
@@ -546,19 +619,28 @@ class iteration:
                 #recall that i goes 0 -> 1 -> 2, so if i = 2, there are 3 lines => an energy!
                 if i >= 2:
                     self.qm_sp_energies.append(qm_calculation.TMcalculation.get_energy(cycle=1))
-                    logger.info(f"[QM Energy (Hart)] ==>> {self.qm_sp_energies[-1]:.5f}")
+                    logger.info(f"[QM Energy]       ==>> {self.qm_sp_energies[-1]:.5f} Hart (finished)")
                     os.chdir("../")
                     continue
                 
             elif not os.path.isfile("coord"):
                 logger.debug("Creating coord file")
-                pdb_to_coord.protein_to_coord(struct, self.parameters["QM Chop"])
+                dmd_to_qm.protein_to_coord(struct, self.parameters["QM Chop"])
 
             if not os.path.isfile("control"):
                 logger.debug("Setting up TM job")
-                #we set timeout to 0 so that we don't have a weird define error from timout in the middle of a job
-                sj = setupTMjob(parameters = self.parameters["qm params"], timeout=0)
 
+                #we set timeout to 0 so that we don't have a weird define error from timout in the middle of a job
+                try:
+                    sj = setupTMjob(parameters = self.parameters["qm params"], timeout=0)
+
+                except exceptions.DefineError:
+                    #Sometimes define ends abnormally and just deleting the control file and redoing works
+                    if os.path.isfile("control"):
+                        os.remove("control")
+
+                    sj = setupTMjob(parameters = self.parameters['qm params'], timeout=0)
+                
                 dirs = [d for d in os.listdir("../") if os.path.isdir(os.path.join("../", d)) and "sp_movie_" in d]
                 dirs.sort(reverse = True, key=lambda i: int(i.split("_")[-1]))
                 
@@ -612,7 +694,7 @@ class iteration:
                 logger.error("Structure may be very weird, continuing to next structure")
                 self.qm_sp_energies.append(0.0)
 
-            logger.info(f"[QM Energy (Hart)] ==>> {self.qm_sp_energies[-1]:.5f}")
+            logger.info(f"[QM Energy] ==>> {self.qm_sp_energies[-1]:.5f} Hart")
             logger.info(f"Time elapsed during QM SP calculation: {datetime.timedelta(seconds = int(end -start))}")
             logger.debug(f"Changing directory from {os.getcwd()} to {os.path.abspath('..')}")
             os.chdir("../")
@@ -640,9 +722,9 @@ class iteration:
 
         self.scoring_energies = list(zip([d[0] for d in self.sp_PDB_structures], [d[1] for d in self.sp_PDB_structures], self.qm_sp_energies, adjusted_scores))
 
-        logger.info(f"[movie_####]------[DMD Inst. Pot (kcal)]------[QM Energy (Hart)]--------[Score]------")
+        logger.info(f"[movie_####]------[DMD Inst. Pot (kcal)]------[QM Energy (Hart)]-----------[Score]------")
         for struct in self.scoring_energies:
-            out_string = f"[{struct[0].name}]         {struct[1]:0<12}                {struct[2]:0<12}            {struct[3]:.3f}"
+            out_string = f"[{struct[0].name}]         {struct[1]:0<12}                {struct[2]:0<14.6f}            {struct[3]:.3f}"
             if struct[3] == winning_score:
                 out_string += "      --w---w--"
 
@@ -661,7 +743,7 @@ class iteration:
         self.next_step = self.qm_optimization
 
     def qm_optimization(self):
-        logger.info("===================[Beginning QM OP]===================")
+        logger.info("==================[Beginning  QM OPT]==================")
         logger.info("")
 
         if self.pdb_winner is None:
@@ -701,22 +783,32 @@ class iteration:
                 qm_params['geo_iterations'] -= total_cycles
 
         if not finished:
+            logger.info("      Attempting to converge active site geometry")
             if not os.path.isfile("coord"):
                 logger.debug("Creating coord file")
-                pdb_to_coord.protein_to_coord(self.pdb_winner[0], self.parameters["QM Chop"])
+                dmd_to_qm.protein_to_coord(self.pdb_winner[0], self.parameters["QM Chop"])
  
             if not os.path.isfile("control"):
                 logger.debug("Setting up TM job")
-                sj = setupTMjob(parameters = qm_params, timeout=0)
+                
+                try:
+                    sj = setupTMjob(parameters = qm_params, timeout=0)
+
+                except exceptions.DefineError:
+                    #Sometimes define throws an error even if everything worked, just retry it once to see if that fixes the issue
+                    if os.path.isfile("control"):
+                        os.remove("control")
+
+                    sj = setupTMjob(parameters = qm_params, timeout=0)
 
                 possible_sp_dir = "../sp_" + self.pdb_winner[0].name
                 found_mos = False
                 if os.path.isdir(possible_sp_dir):
                     for mo_file in constants.MO_FILES:
-                        if os.path.isfile(os.path.join(possible_sp_directory, mo_file)):
+                        if os.path.isfile(os.path.join(possible_sp_dir, mo_file)):
                             logger.debug(f"Copying over {mo_file} file")
                             found_mos = True
-                            shutil.copy(os.path.join(possible_sp_directory, mo_file), f"./{mo_file}")
+                            shutil.copy(os.path.join(possible_sp_dir, mo_file), f"./{mo_file}")
 
                 else:
                     #Check for any of these directories actually...
@@ -738,7 +830,6 @@ class iteration:
                     #TODO allow user to specify a default mos, alpha, beta to use!
                     pass
 
-            logger.info("      Attempting to converge active site geometry")
             start = timer()
             geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
             end = timer()
@@ -746,7 +837,7 @@ class iteration:
                 logger.info(f"Failed to converge in {qm_params['geo_iterations']} geometry cycles ({qm_params['geo_iterations'] + total_cycles} total cycles)")
 
             elif os.path.isfile("GEO_OPT_CONVERGED"):
-                logger.info("Active site optimization converged!")
+                logger.info("Active site optimization converged")
 
             else:
                 logger.error("TURBOMOLE OPTIMIZATION FAILED TO RUN PROPERLY!")
@@ -763,7 +854,7 @@ class iteration:
             logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
         
         #Now we reinstall the coords into the protein!
-        self.to_next_iteration = pdb_to_coord.coord_to_pdb(self.pdb_winner[0])
+        self.to_next_iteration = dmd_to_qm.coord_to_protein(self.pdb_winner[0])
 
 
         #Now we reinstall into the protein
@@ -774,7 +865,7 @@ class iteration:
         self.next_step = self.finish_iteration
       
         logger.info("")
-        logger.info("===================[Finished  QM OP]===================")
+        logger.info("===================[Finished QM OPT]===================")
 
 
     def finish_iteration(self):
@@ -794,17 +885,19 @@ class iteration:
                     outfile_lines.append(line)
 
             first_line = outfile_lines.pop(0)
-            prev_iter = [int(i.split()[0]) for i in outfile_lines][-1]
-
-            while prev_iter + 1 != self.iter_number and outfile_lines:
-                outfile_lines.pop()
+            if outfile_lines:
                 prev_iter = [int(i.split()[0]) for i in outfile_lines][-1]
+
+                while prev_iter + 1 != self.iter_number and outfile_lines:
+                    prev_iter = [int(i.split()[0]) for i in outfile_lines][-1]
+                    outfile_lines.pop(0)
             
         else:
-            outfile_lines.append("[Iteration]        [QM Energy (Hart)]        [DMD Energy (kcal)]\n")
+            first_line = ("[Iteration]        [QM Energy (Hart)]        [DMD Energy (kcal)]\n")
 
         outfile_lines.append(f"{self.iter_number:0>2d}                 {self.qm_final_energy:.5f}                 {self.pdb_winner[1]:.5f}\n")
         with open(os.path.join(self.root_directory, "phd_energy"), 'w') as outfile:
+            outfile.write(first_line)
             for line in outfile_lines:
                 outfile.write(line)
 
@@ -817,7 +910,7 @@ class iteration:
 
     def signal_alarm(self):
         #This is called if the controller ran out of time
-        self._stop = True
+        self.stop = True
 
         #Create a stop file for the geometry optimization...otherwise, just have to wait for it to stop itself
         if self.next_step == self.qm_optimization:
@@ -825,11 +918,13 @@ class iteration:
             with open(os.path.join(self.directory, "Optimization/stop"), 'w') as stopfile:
                 pass
 
-
-    def dmd_converged(self):
+    
+    @staticmethod
+    def dmd_converged( dmd_average_energies):
         if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-2][1]:
             if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-1][1]:
                 return True
 
         return False
+
 

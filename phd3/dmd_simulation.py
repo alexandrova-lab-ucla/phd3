@@ -16,6 +16,7 @@ import phd3.protein.protein as protein
 import phd3.utility.utilities as utilities
 from phd3.setupjob import setupDMDjob
 from phd3.utility.exceptions import ParameterError
+from phd3.titrate import titrate_protein
 
 logger=logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class dmd_simulation:
 
     __slots__=["_submit_directory", "_scratch_directory", "_config", "_cores",
             "_time_to_run", "_timer_went_off",  "_start_time",
-            "_parameter_file", "_raw_parameters", "_commands", "_src_files" ]
+            "_parameter_file", "_raw_parameters", "_commands", "_src_files" ,"_titration"]
 
     def __init__(self, cores: int = 1, run_dir: str='./', time=-1, pro: protein.Protein=None, parameters: dict=None):
 
@@ -89,18 +90,24 @@ class dmd_simulation:
             logger.exception("Invalid parameter specification")
             raise
 
-        # TODO check to see if we are doing titratable DMD-if so, create a titratable object and start interacting with that
-        # Have it expand the commands to a set of block commands that will always update the protonation state->ie calls the titr feature to reset the inConstr file and movie the necessary files around!!!!!!
+        if self._raw_parameters["titr"]["titr on"]:
+            self._titration = titrate_protein(self._raw_parameters["titr"])
+            self._raw_parameters = self._titration.expand_commands(self._raw_parameters)            
+
+        else:
+            self._titration = None
 
         # TODO check for any exceptions raised from setupDMDjob
         if pro is None:
             if not os.path.isfile("initial.pdb"):
                 logger.debug("initial.pdb not found, will try setting up from scratch")
                 sj = setupDMDjob(parameters=self._raw_parameters)
+                sj.full_setup()
 
         else:
             logger.debug("Will setup the protein for DMD")
             sj = setupDMDjob(parameters=self._raw_parameters, pro=pro)
+            sj.full_setup()
 
         if os.path.isfile(self._raw_parameters["Echo File"]):
             with open(self._raw_parameters["Echo File"]) as echofile:
@@ -195,6 +202,7 @@ class dmd_simulation:
 
         # We loop over the steps here and will pop elements off the beginning of the dictionary
         while len(self._commands.values()) != 0:
+            logger.info("")
             if self._timer_went_off:
                 logger.info("Timer went off, not continuing onto next command")
                 break
@@ -210,10 +218,44 @@ class dmd_simulation:
             
             start = timer()
             if updated_parameters["titr"]["titr on"]:
-                # TODO check to see if we have a titratable object first and then decide if having this turned on is valid or not
-                logger.warning("Titratable feature cannot be turned on in the middle of a run")
-                # What we will have happen is the titr feature either just run the job, seperate from here
-                # Or we can have it update self._commands with the appropriate commands until it is done with all of the steps
+                if self._titration is None:
+                    logger.warning("Titration feature cannot be turned on in the middle of a run")
+                    raise ValueError("Titration turned on")
+                
+                if os.path.isfile(updated_parameters["Movie File"]):
+                    utilities.make_movie("initial.pdb", updated_parameters["Movie File"], "_tmpMovie.pdb")
+                    #Append to movie
+                    with open("_tmpMovie.pdb", 'r') as tmpMovie, open("movie.pdb", 'a') as movie:
+                        for line in tmpMovie:
+                            movie.write(line)
+
+                    last_frame = utilities.last_frame("_tmpMovie.pdb")
+                    
+                    #Clean up our mess
+                    logger.debug("Removing _tmpMovie.pdb file")
+                    os.remove("_tmpMovie.pdb")
+                    logger.debug(f"Removing {updated_parameters['Movie File']} file")
+                    os.remove(updated_parameters["Movie File"])
+                    
+                else:
+                    last_frame = utilities.load_pdb("initial.pdb")
+                
+                if os.path.isfile(updated_parameters['Restart File']):
+                    logger.debug(f"Removing {updated_parameters['Restart File']} file")
+                    os.remove(updated_parameters['Restart File'])
+
+                #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
+                #states defined by the user)
+                updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+
+                sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
+                
+                #This will not do a quick dmd setup, so we should be able to expedite that slightly. Also no topparam file either
+                #creates state, start and outConstr, inConstr
+                sj.titrate_setup()
+
+                #We don't want to use the restart file, so set last var to False
+                self.run_dmd(updated_parameters, self._start_time, False)
 
             elif "Custom protonation states" in steps.keys():
                 logger.warning("Why are you trying to change the protonation state in the middle of DMD?")
@@ -228,7 +270,7 @@ class dmd_simulation:
 
             end = timer()
 
-            self.print_summary(updated_parameters['Time'], )
+            self.print_summary(updated_parameters['Time'], end-start)
 
             # Assuming we finished correctly, we pop off the last issue
             self._commands.pop(list(self._commands.keys())[0])
@@ -242,6 +284,11 @@ class dmd_simulation:
             logger.debug("Finished all commands...writing final dmdinput.json")
 
         logger.debug("Setting remaining commands to the rest of the commands")
+       
+        if self._titration is not None:
+            logger.debug("Condensing any commands remaining from the titratable feature")
+            self._raw_parameters = self._titration.condense_commands(self._raw_parameters)
+
         self._raw_parameters["Remaining Commands"] = self._commands
         with open("dmdinput.json", 'w') as dmdinput:
             logger.debug("Dumping to json")
@@ -300,20 +347,18 @@ class dmd_simulation:
         utilities.make_start_file(parameters, start_time)
 
         if use_restart:
-            if os.path.isfile(self._raw_parameters["Restart File"]):
-                logger.info(f"[Restart File]     ==>> True")
-                logger.info(f"[Issuing command]  ==>>")
             state_file = self._raw_parameters["Restart File"] if os.path.isfile(self._raw_parameters["Restart File"]) else "state"
 
         else:
             state_file = "state"
 
-        logger.info(f"[Restart File]     ==>> {'True' if state_file == 'state' else 'False'}")
+        logger.info(f"[Restart File]     ==>> {'False' if state_file == 'state' else 'True'}")
 
         #Now we execute the command to run the dmd
         try:
             with open("dmd.out", 'a') as dmd_out:
                 logger.info(f"[Issuing command]  ==>> pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa")
+                logger.info("...")
                 with Popen(f"pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa",
                         stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
                     while shell.poll() is None:
@@ -418,7 +463,7 @@ class dmd_simulation:
         logger.info(f"[Ave. Pressure   ] ==>> {pressure[0]:.5f} ({pressure[1]:.5f})")
         logger.info(f"[Ave. Temperature] ==>> {temperature[0]:.5f} ({temperature[1]:.5f})")
         logger.info(f"[Est. Phys. Time ] ==>> {sim_time*0.0000488882} ns")
-        logger.info(f"Time elapsed during DMD simulation: {datetime.timedelta(seconds = wall_time)}")
+        logger.info(f"Time elapsed during DMD simulation: {datetime.timedelta(seconds = int(wall_time))}")
 
 
     def calculation_alarm_handler(self, signum, frame):

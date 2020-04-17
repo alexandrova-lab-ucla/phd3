@@ -22,6 +22,7 @@ def main():
 
     try:
         sdj = setupDMDjob()
+        sdj.full_setup()
 
     except OSError:
         logger.exception("OSError encountered, likely an issue with moving files around")

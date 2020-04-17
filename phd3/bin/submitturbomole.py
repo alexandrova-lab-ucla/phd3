@@ -126,7 +126,7 @@ def main(_cores: int=None, _time: int=None, _nodes: int=1, _sub: bool=True):
 
     # Submit the Job!!
     if sub:
-        logger.info("Submitting job to queue")
+        logger.info(">>>> Submitting job to queue >>>>")
         with Popen(f"{config['QUEUING']['submit']} {constants.SUBMIT_FILE_NAME}", shell=True, universal_newlines=True,
                    stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=1, env=os.environ) as shell:
             while shell.poll() is None:

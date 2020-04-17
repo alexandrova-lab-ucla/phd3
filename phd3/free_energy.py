@@ -91,7 +91,7 @@ def gcorrvib(temp:float = 298.15):
                     if len(line.split()) == 6:
                         frequency = float(line.split()[2])
                         if frequency < 0.1:
-                            logger.warning(f"Imaginary frequency detected: {frequency}")
+                            logger.info(f"Imaginary frequency detected: {frequency}")
 
                         elif frequency < 10000:
                             freq.append(frequency)
@@ -151,7 +151,7 @@ def free_energy_correction(temp:float = 298.15):
                         logger.warning(f"Imaginary frequency detected: {line[20:].split()[0]}")
 
             logger.debug("Setting up environment to call freeh")
-            config = utilities.load_turbo_config()
+            config = utilities.load_phd_config()
             utilities.setup_turbomole_env(config["PATHS"]["TURBODIR"])
 
             try:

@@ -108,9 +108,9 @@ class controller:
             os.chdir(self._scratch)
 
         if self._time != -1:
-            logger.debug("Starting the timer")
+            logger.info("Starting the timer")
             signal.signal(signal.SIGALRM, self.alarm_handler)
-            signal.alarm((self._time* 60 - 45) * 60)
+            signal.alarm((self._time* 60 - 55) * 60)
 
         while not self._stop and self._iteration <= self._parameters["Max Iterations"]:
             #This is the loop we stay in until we need to quit
@@ -122,7 +122,7 @@ class controller:
             self._iteration += 1
 
         if self._time != -1:
-            logger.debug("Turning off timer")
+            logger.info("Turning off timer")
             signal.alarm(0)
 
         if os.path.abspath(self._scratch) != os.path.abspath(self._submit_directory):
@@ -139,7 +139,7 @@ class controller:
             logger.debug("Changing directory from {os.getcwd()} to {self._submit_directory}")            
             os.chdir(self._submit_directory)
         
-        if self._stop and self._iteration <= self._parameters["Max Iteration"]:
+        if self._stop and self._iteration <= self._parameters["Max Iterations"]:
             if self._parameters["Resubmit"]:
                 submitphd.main(_cores = self._cores, _time=self._time)
 
@@ -164,4 +164,5 @@ class controller:
 
             if os.path.isfile(os.path.join(self._scratch, "phd_energy")):
                 shutil.copy(os.path.join(self._scratch, "phd_energy"), self._submit_directory)
-            
+        
+        signal.alarm(0)

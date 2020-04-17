@@ -19,7 +19,9 @@ __all__=[
     'ATOM_MASS',
     'Kb',
     'H_TO_KCAL',
-    'MO_FILES'
+    'MO_FILES',
+    'PROTONATED_STANDARD',
+    'DEPROTONATED_STANDARD'
 ]
 
 MO_FILES = ['mos', 'alpha', 'beta']
@@ -32,7 +34,13 @@ THERMOSTATS = ('ANDERSON')
 PROTONATED = {
     "ASP": [("OD1", "2HND"), ("OD2", "1HND")],
     "GLU": [("OE1", "2HNE"), ("OE2", "1HNE")],
-    "HIS": [("NE2", "1HNE")]
+    "HIS": [("NE2", "2HNE")]
+}
+
+PROTONATED_STANDARD = {
+    "ASP" : [("OD1", "HD1"), ("OD2", "HD2")],
+    "GLU" : [("OE1", "HE2"), ("OE2", "HE1")],
+    "HIS" : [("NE2", "HE2")]
 }
 
 #Need to add arganine and lysine
@@ -47,6 +55,19 @@ DEPROTONATED = {
     "HIS": [("ND1", "HD1")],
     "ARG": [("NH1", "2HH1"), ("NH1", "1HH1"), ("NH2", "2HH2"), ("NH2", "1HH2"), ("NE", "HE")],
     "LYS": [("NZ", "HZ1"), ("NZ", "HZ2"), ("NZ", "HZ3")]
+    }
+
+DEPROTONATED_STANDARD = {
+    "SER" : [("OG", "HG")],
+    "CYS" : [("SG", "HG")],
+    "THR" : [("OG1", "HG1")],
+    "ASN" : [("ND2", "HD21"), ("ND2", "HD22")],
+    "GLN" : [("NE2", "HE21"), ("NE2", "HE22")],
+    "TYR" : [("OH", "HH")],
+    "TRP" : [("NE1", "HE1")],
+    "HIS" : [("ND1", "ND1")],
+    "ARG" : [("NH1", "HH21"), ("NH1", "HH11"), ("NH2", "HH22"), ("NH2", "HH12"), ("NE", "HE")],
+    "LYS" : [("NZ", "HZ1"), ("NZ", "HZ2"), ("NZ", "HZ3")]
 }
 
 HEAVY_ATOMS = ['n', 'o', 's', 'se']

@@ -18,7 +18,8 @@ import phd3.protein.protein as protein
 
 __all__ = [
     'setupTMjob',
-    'setupDMDjob'
+    'setupDMDjob',
+    'setupPHDjob'
 ]
 
 logger = logging.getLogger(__name__)
@@ -225,12 +226,7 @@ class setupTMjob:
             logger.error("IO Error encountered in predefine processing")
             raise
 
-        try:
-            self.execute_define()
-
-        except exceptions.DefineError:
-            logger.error("Define Error encountered in running define")
-            raise
+        self.execute_define()
 
         try:
             self.postdefine_process()
@@ -249,13 +245,6 @@ class setupTMjob:
 
         logger.debug("Finished setting up the job")
         
-        if (random.randint(1, 100000000) % 100) < 5:
-            logger.info(utilities.quote_me())
-
-        else:
-            logger.info("[setup turbomole]        ==>> SUCCESS")
-
-    # go back to the inital directory
         logger.debug(f"Moving back to initial directory: {self._initial_directory}")
         try:
             os.chdir(self._initial_directory)
@@ -263,7 +252,7 @@ class setupTMjob:
             logger.exception(f"Could not return to initial directory: {self._initial_directory}")
             raise
 
-        logger.debug("Finished setting up turbomole job!")
+        logger.info("[setup turbomole] ==>> SUCCESS")
 
     def _create_define_options(self, parameters: dict = None):
         """Loads in the parameters and pipes the appropriate commands
@@ -611,11 +600,10 @@ class setupTMjob:
 
         if self._errstate != "all done":
             self._define_logger.error(f"Error: {self._errstate}\n")
-            logger.error("Define Error termination")
-            logger.error(self._errstate)
+            logger.error(f"[Define]          ==>> ERROR TERMINATION ({self._errstate})")
             raise exceptions.DefineError
 
-        logger.info("[Define] ==>> Ended Normally")
+        logger.info("[Define]          ==>> Ended Normally")
         logger.debug("Finished define")
 
 
@@ -703,6 +691,10 @@ class setupTMjob:
             if line == "":
                 continue
             elif "****  define : all done  ****" in line:
+                self._errstate = "all done"
+                return False
+
+            elif "e n d   o f" in line:
                 self._errstate = "all done"
                 return False
 
@@ -889,6 +881,9 @@ class setupDMDjob:
                 id = [item[0], item[1]]
                 self._protonate.append([self._protein.get_residue(id), item[2:]])
 
+
+    def full_setup(self):
+
         logger.debug("Changing protein name to initial.pdb and writing out")
         self._protein.reformat_protein()
         self._protein.name = 'initial.pdb'
@@ -901,6 +896,17 @@ class setupDMDjob:
         utilities.make_start_file(self._raw_parameters)
 
         logger.info("[setup dmd]        ==>> SUCCESS")
+
+    def titrate_setup(self):
+        logger.debug("Skipping short dmd step")
+        self._protein.reformat_protein()
+        self._protein.name = 'initial.pdb'
+        self._protein.write_pdb()
+
+        self.make_inConstr()
+        utilities.make_state_file(self._raw_parameters, self._protein.name)
+        utilities.make_start_file(self._raw_parameters)
+        logger.info("[titratable setup] ==>> SUCCESS")
 
     def short_dmd(self):
         try:
@@ -980,18 +986,6 @@ class setupDMDjob:
     def make_inConstr(self):
         try:
             with open('inConstr', 'w') as inConstr_file:
-                # This is apparently not needed
-                # try:
-                #     with Popen(f"genESC.linux {self._dmd_config['PATHS']['parameters']} {self._protein.name} topparam",
-                #                stdout=inConstr_file, stderr=PIPE, universal_newlines=True, shell=True, bufsize=1,
-                #                env=os.environ) as shell:
-                #         while shell.poll() is None:
-                #             if len(shell.stderr.readline().strip()) > 0:
-                #                 logger.debug(shell.stderr.readline().strip())
-                # except OSError:
-                #     logger.exception("Error calling genESC.linux")
-                #     raise
-
                 if self._raw_parameters["Freeze Non-Residues"]:
                     logger.debug("Freeze Non-residues turned on, freezing residues")
                     for residue in self._protein.sub_chain.residues:
@@ -1009,11 +1003,20 @@ class setupDMDjob:
                     if len(state[1]) > 1:
                         #Then we had a number specify
                         logger.debug("Specified which atom specifically to use!")
-                        if state[1][0] == "protonate":
-                            atom_id = constants.PROTONATED[state[0].name][state[1][1]]
+                        
+                        #For n-terminus
+                        if state[1][1] == -1:
+                            atom_id = "N"
+
+                        #For c-terminus
+                        elif state[1][1] == -2:
+                            atom_id = "O"
+
+                        elif state[1][0] == "protonate":
+                            atom_id = constants.PROTONATED[state[0].name][state[1][1]-1]
 
                         elif state[1][0] == "deprotonate":
-                            atom_id = constants.DEPROTONATED[state[0].name][state[1][1]]
+                            atom_id = constants.DEPROTONATED[state[0].name][state[1][1]-1]
 
                     else:
                         if state[1][0] == "protonate":
@@ -1102,3 +1105,15 @@ class setupDMDjob:
             new_state[2] = state[2]
 
         return new_parameters
+
+class setupPHDjob:
+
+    #call setupDMD first
+    #get updated parameters, need a track residues/chains/atoms etc...
+    #convert pdb to coord file (ie the chop)
+    #go from coord to pdb again (should be no issue here)
+    #save new phdinput file (expanded from what it was) with updated params
+    def __init__():
+        pass
+
+

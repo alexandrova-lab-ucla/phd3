@@ -388,10 +388,12 @@ def valid_dmd_parameters(parameters: dict):
     else:
         for state in parameters["Custom protonation states"]:
             try:
-                assert(len(state) == 3)
+                assert(len(state) == 3 or len(state) == 4)
                 assert(type(state[0]) == str)
                 assert(type(state[1]) == int and state[1] > 0)
                 assert(type(state[2]) == str)
+                if len(state) == 4:
+                    assert(type(state[3]) == int and state[3] >= -2)
 
             except ValueError:
                 raise ParameterError(f"Invalid specification of protonation states: {state}")
@@ -461,7 +463,7 @@ def valid_dmd_parameters(parameters: dict):
     else:
         for command in parameters["Commands"]:
             try:
-                assert(type(command) is dict)
+                assert(type(parameters["Commands"][command]) is dict)
 
             except ValueError:
                 raise ParameterError(f"Command provided is not a dictionary: {command}")
@@ -699,6 +701,9 @@ def make_movie(initial_pdb, movie_file, output_pdb):
         logger.exception("Error calling complex_M2P.linux")
         raise
 
+    if not os.path.isfile(output_pdb):
+        raise FileNotFoundError(output_pdb)
+
 def load_movie(movie_file:str):
     if not os.path.isfile(movie_file):
         logger.error(f"File does not exist: {movie_file}")
@@ -753,6 +758,8 @@ def load_movie(movie_file:str):
     logger.debug("Successfully loaded in the file!")
     return proteins
 
+def last_frame(movie_file):
+    return load_movie(movie_file)[-1]
 
 def print_header():
     main_logger = logging.getLogger("phd3")
@@ -776,7 +783,7 @@ def print_header():
     main_logger.info("[Idea and Director]  ==>>    Anastassia N. Alexandrova ")
     main_logger.info("[Idea and Director]  ==>>    Manuel Sparta")
     main_logger.info("[Program Developer]  ==>>    Matthew R. Hennefarth")
-#    main_logger.info("[Titrate Developer]  ==>>    David J. Reilley")
+    main_logger.info("[Titrate Developer]  ==>>    David J. Reilley")
     main_logger.info("")
     main_logger.info("[Research Group]     ==>>    Alexandrova Research Group")
     main_logger.info("                     ==>>    University of California, Los Angeles")

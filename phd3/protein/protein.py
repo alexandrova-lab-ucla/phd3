@@ -282,7 +282,7 @@ class Protein:
                             cterm_oxygens.append(a)
 
                 except:
-                    self._logger.warn("Protein does not have a carbony at c-terminus")
+                    self._logger.warn("Protein does not have a carbonly at c-terminus")
 
             #Find the column that has the current naming scheme present
             self._logger.debug("Checking for the scheme id")
@@ -434,6 +434,12 @@ class Protein:
         if not successful:
             self._logger.error("Could not create {residue.name} mol2 file!")
             raise OSError("mol2_file")
+
+        #Clear the bond lists first:
+        for chain in self.chains:
+            for residue in chain.residues:
+                for atom in residue.atoms:
+                    atom.bonds.clear()
 
         atom_list = [atom for c in self.chains for r in c.residues for atom in r.atoms]
 

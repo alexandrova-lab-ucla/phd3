@@ -196,7 +196,7 @@ class TMcalculation:
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
         try:
-            logger.info("Beginning the TURBOMOLE calulcation")
+            logger.debug("Beginning the TURBOMOLE calulcation")
 
             # Arm the timer
             if self._time_to_run != -1:
@@ -264,7 +264,7 @@ class TMcalculation:
                 logger.addHandler(hdlr)
                          
         self.clean_up()
-        logger.info("Finished Calculation")
+        logger.debug("Finished Calculation")
 
         if self._resub:
             logger.info("Resubmitting the job!")
@@ -450,11 +450,11 @@ class TMcalculation:
 
     def _run(self, command):
         logger.info(f"[Issuing command] ==>> {command}")
+        logger.info("...")
         with Popen(command, shell=True, universal_newlines=True, stdin=PIPE,
                    stdout=PIPE, stderr=STDOUT, env=os.environ) as shell:
             while shell.poll() is None:
-                logger.info(shell.stdout.readline().strip())
-        logger.info("")
+                logger.debug(shell.stdout.readline().strip())
 
     def calculation_alarm_handler(self, signum, frame):
         """
@@ -612,10 +612,10 @@ class TMcalculation:
                     return
 
         logger.info(">>>> Setting up TURBOMOLE Environment >>>>")
-        logger.info(f"[Cores]       ==>>   {str(cores)}")
-        logger.info(f"[PARA_ARCH]   ==>>   {para_arch}")
-        logger.info(f"[LOCAL_DIR]   ==>>   {scratch_directory}")
-        logger.info(f"[TM_PAR_FORK] ==>>   on")
+        logger.info(f"[Cores]           ==>>   {str(cores)}")
+        logger.info(f"[PARA_ARCH]       ==>>   {para_arch}")
+        logger.info(f"[LOCAL_DIR]       ==>>   {scratch_directory}")
+        logger.info(f"[TM_PAR_FORK]     ==>>   on")
         logger.info("")
 
         os.environ["TURBODIR"] = turbodir

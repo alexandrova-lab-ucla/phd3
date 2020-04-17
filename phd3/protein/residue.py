@@ -49,5 +49,19 @@ class Residue:
         else:
             return f"{ord(self.chain.name)- ord('A') + self.inConstr_number}.1.*"
 
+    def is_n_terminus(self):
+        if self.chain is not None:
+            if self is self.chain.residues[0]:
+                return True
+
+        return False
+    
+    def is_c_terminus(self):
+        if self.chain is not None:
+            if self is self.chain.residues[-1]:
+                return True
+
+        return False
+
     def __str__(self):
         return f"{self.name} {self.number}"

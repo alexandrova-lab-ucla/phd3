@@ -20,17 +20,6 @@ def main():
     logger = logging.getLogger(__name__)
 
     # This is the logger for the free_energy script. We now need to remove all of the handlers and append the typical sys.std to it as this is a command line script
-    internal_logger = logging.getLogger("phd3.free_energy")
-   
-    for hdlr in internal_logger.handlers[:]:
-        internal_logger.removeHandler(hdlr)
-    
-    appendHandler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter("\t%(message)s")
-    appendHandler.setFormatter(formatter)
-    internal_logger.addHandler(appendHandler)
-
-    internal_logger.setLevel(logging.INFO) 
 
     # Now we have switched out the logger for the sys.stoud so that everything at info or above is output to the console
     logger.debug("Logger is setup!")
@@ -54,7 +43,7 @@ def main():
         logger.exception("Error while calculating free energy")
         sys.exit(1)
 
-    print(f"\tFree energy correction (Hartrees): {gcorr}")
+    logger.info(f"[Free energy correction] ==>> {gcorr} (Hart)")
 
     logger.debug("Finished with Calculation")
 
