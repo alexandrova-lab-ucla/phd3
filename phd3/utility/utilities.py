@@ -93,7 +93,7 @@ def valid_qm_parameters(parameters: dict):
                 assert (atom1.isdigit())
                 assert (atom2.isdigit())
             except ValueError:
-                raise exceptions.ParameterError(f"incorrect formatting of idef bonds : {bond}")
+                raise ParameterError(f"incorrect formatting of idef bonds : {bond}")
 
     if parameters["geometry"]["iaut"]['iaut_on']:
         logger.debug("Checking iaut")
@@ -103,13 +103,13 @@ def valid_qm_parameters(parameters: dict):
                 assert (atom1.isdigit())
                 assert (atom2.isdigit())
             except ValueError:
-                raise exceptions.ParameterError(f"incorrect formatting of iaut bonds : {bond}")
+                raise ParameterError(f"incorrect formatting of iaut bonds : {bond}")
 
     if parameters["basis"]:
         logger.debug("Checking basis")
         for atom in parameters["basis"].keys():
             if not parameters["basis"][atom] in constants.AVAILABLE_BASIS:
-                raise exceptions.ParameterError(f"invalid basis set for: {atom} | {parameters['basis'][atom]}")
+                raise ParameterError(f"invalid basis set for: {atom} | {parameters['basis'][atom]}")
 
     try:
         logger.debug("Checking charge")
@@ -117,7 +117,7 @@ def valid_qm_parameters(parameters: dict):
 
     except:
         logger.error("Invalid charge type provided!")
-        raise exceptions.ParameterError("invalid charge provided")
+        raise ParameterError("invalid charge provided")
 
     if parameters["open_shell"]["open_shell_on"]:
         logger.debug("Checking unpaired electrons")
@@ -126,16 +126,16 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid value for unpaired electrons")
-            raise exceptions.ParameterError("invalid number of unpaired electrons")
+            raise ParameterError("invalid number of unpaired electrons")
 
     if parameters["dft"]["dft_on"]:
         logger.debug("Checking dft")
         if parameters["dft"]["func"] not in constants.AVAILABLE_FUNCS and parameters["dft"]["func"] not in constants.MINN_FUNCS:
             logger.error("Functional provided not available")
-            raise exceptions.ParameterError(f"invalid functional provided: {parameters['dft']['func']}")
+            raise ParameterError(f"invalid functional provided: {parameters['dft']['func']}")
         if parameters["dft"]["grid"] not in constants.AVAILABLE_GRIDS:
             logger.error("Grid provided is not available")
-            raise exceptions.ParameterError(f"invalid grid provided: {parameters['dft']['grid']}")
+            raise ParameterError(f"invalid grid provided: {parameters['dft']['grid']}")
 
     if parameters["stp"]:
         try:
@@ -144,7 +144,7 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid itvc value")
-            raise exceptions.ParameterError("invalid input for itvc")
+            raise ParameterError("invalid input for itvc")
 
         try:
             logger.debug("Checking trust radius")
@@ -152,7 +152,7 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid trust radius value")
-            raise exceptions.ParameterError("invalid input for trad")
+            raise ParameterError("invalid input for trad")
 
     if parameters["cosmo"]:
         logger.debug("Checking cosmo")
@@ -161,7 +161,7 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid cosmo value")
-            raise exceptions.ParameterError("invalid input for cosmo")
+            raise ParameterError("invalid input for cosmo")
 
     if parameters["freeze_atoms"]:
         try:
@@ -170,7 +170,7 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid list of frozen cartesian atoms")
-            raise exceptions.ParameterError("invalid list of frozen cartesian atoms")
+            raise ParameterError("invalid list of frozen cartesian atoms")
 
     if parameters["gcart"]:
         logger.debug("Checking gcart")
@@ -179,14 +179,14 @@ def valid_qm_parameters(parameters: dict):
 
         except:
             logger.error("Invalid gcart value")
-            raise exceptions.ParameterError("invalid value for gcart")
+            raise ParameterError("invalid value for gcart")
 
     try:
         assert (type(parameters["weight"]) == bool)
 
     except:
         logger.error("Invalid value for weight")
-        raise exceptions.ParameterError("invalid value for weight")
+        raise ParameterError("invalid value for weight")
 
     if parameters["calculation"] == "":
         logger.warning("No calculation type set!")
@@ -194,16 +194,16 @@ def valid_qm_parameters(parameters: dict):
     else:
         if parameters["calculation"] not in constants.AVAILABLE_CALCULATIONS:
             logger.error("Invalid value for calculation")
-            raise exceptions.ParameterError("invalid calculation type")
+            raise ParameterError("invalid calculation type")
 
         if parameters["calculation"] == "trans" and parameters["stp"]["itvc"] == 0:
             logger.error("Cannot perform trans calculation with itvc = 0!")
-            raise exceptions.ParameterError("calculation and itvc do not match")
+            raise ParameterError("calculation and itvc do not match")
 
         if parameters["calculation"] == "geo" or parameters["calculation"] == "forceopt":
             if parameters["stp"]["itvc"] != 0:
                 logger.error("Cannot perform geo calculation with itvc not 0!")
-                raise exceptions.ParameterError("calculation and itvc do not match")
+                raise ParameterError("calculation and itvc do not match")
 
 def create_config():
     # TODO: have a function that verifies the accuracy of the config file!
