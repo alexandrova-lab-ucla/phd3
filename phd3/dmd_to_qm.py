@@ -26,6 +26,9 @@ _all__ = [
         ]
 
 def addH(protein):
+    phd_config = utilities.load_phd_config()
+    chimera_path = phd_config["PATHS"]["chimera"]
+    
     protein.write_pdb("_temp.pdb")
 
     with open("chimeraaddh.com", "w") as comfile:
@@ -35,7 +38,7 @@ def addH(protein):
         comfile.write("stop\n")
 
     try:
-        with Popen("chimera --nogui chimeraaddh.com",
+        with Popen(f"{os.path.join(chimera_path, 'chimera')} --nogui chimeraaddh.com",
                 stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
             while shell.poll() is None:
                 logger.debug(shell.stdout.readline().strip())

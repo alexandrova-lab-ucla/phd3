@@ -2,7 +2,8 @@
   "PATHS" : {
     "TURBODIR" : "/u/home/a/ana/TURBOMOLE",
     "DMD_DIR" : "/u/home/m/mhennefa/matthewscripts/dmd/bin/",
-    "parameters" : "/u/home/m/mhennefa/matthewscripts/dmd/parameter/"   
+    "parameters" : "/u/home/m/mhennefa/matthewscripts/dmd/parameter/",   
+    "chimera" : "/u/home/a/ana/bin/chimera"
   },
   "QUEUING" : {
     "max_nodes" : 1,
