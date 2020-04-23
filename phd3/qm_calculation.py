@@ -14,6 +14,7 @@ import logging
 from timeit import default_timer as timer
 import datetime
 from subprocess import Popen, PIPE, STDOUT
+import time
 
 #PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
@@ -338,7 +339,9 @@ class TMcalculation:
         if self._raw_parameters["gcart"] is not None:
             command += f" -gcart {str(self._raw_parameters['gcart'])}"
 
-        self._run(command + f" -np {self._cores} > jobex.out")
+        command += f" -np {self._cores}"
+
+        self._run(command + " > jobex.out")
 
     def _singlepoint(self):
         """ Exceutes the commands (dscf/ridft) to perform a singlepoint calculation """
@@ -456,10 +459,10 @@ class TMcalculation:
     def _run(self, command):
         logger.info(f"[Issuing command] ==>> {command}")
         logger.info("...")
-        with Popen(command, shell=True, universal_newlines=True, stdin=PIPE,
-                   stdout=PIPE, stderr=STDOUT, env=os.environ) as shell:
+        with Popen(command, stdin=PIPE, stdout=PIPE, stderr=STDOUT, env=os.environ, shell=True, universal_newlines=True) as shell:
             while shell.poll() is None:
                 logger.debug(shell.stdout.readline().strip())
+
 
     def calculation_alarm_handler(self, signum, frame):
         """
@@ -642,5 +645,16 @@ class TMcalculation:
                 sysname += shell.stdout.readline().strip()
         os.environ["PATH"] += os.pathsep + turbodir + f'/bin/{sysname}'
 
+    @staticmethod
+    def scfiterfail():
+        if not os.path.isfile("GEO_OPT_FAILED"):
+            return False
+
+        with open("GEO_OPT_FAILED", 'r') as errorfile:
+            for line in errorfile:
+                if "ERROR: your energy calculation did not converge" in line:
+                    return True
+        
+        return False
 
 

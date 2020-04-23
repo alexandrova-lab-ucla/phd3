@@ -122,6 +122,11 @@ class controller:
             #This is the loop we stay in until we need to quit
             self._curr_iterat = iteration.iteration(f"Iteration_{self._iteration}", os.path.abspath("."), self._parameters, self._iteration, self._cores) 
             self._curr_iterat.continue_calculation()
+            
+            #Checks to see if the iteration is telling us to stop
+            if self._curr_iterat.stop:
+                self._stop = self._curr_iterat.stop
+
             if self._stop:
                 self._iteration -=1
 

@@ -835,11 +835,30 @@ class iteration:
             start = timer()
             geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
             end = timer()
-            if os.path.isfile("GEO_OPT_FAILED"):
-                logger.info(f"Failed to converge in {qm_params['geo_iterations']} geometry cycles ({qm_params['geo_iterations'] + total_cycles} total cycles)")
+            if geo.scfiterfail():
+                #We need to quit and save everything
+                self.stop = True
+                logger.info(f"SCF iterations exceeded")
+                self.next_step = None
+                return
 
             elif os.path.isfile("GEO_OPT_CONVERGED"):
                 logger.info("Active site optimization converged")
+
+            elif os.path.isfile("energy") and os.path.isfile("GEO_OPT_FAILED"):
+                with open("energy", 'r') as energyfile:
+                    i = -1
+                    for l in energyfile:
+                        i += 1
+                    
+                    total_cycles = i - 1
+                    if total_cycles == -2:
+                        self.stop = True
+                        logger.warn("Energy file is empty")
+                        self.next_step = None
+                        return
+
+                logger.info(f"Failed to converge in a total of {total_cycles} geometry cycles")
 
             else:
                 logger.error("TURBOMOLE OPTIMIZATION FAILED TO RUN PROPERLY!")
@@ -852,7 +871,7 @@ class iteration:
         else:
             self.qm_final_energy = qm_calculation.TMcalculation.get_energy()
             logger.info("")
-            logger.info("[Final QM Energy] ==>> {self.qm_final_energy}")
+            logger.info(f"[Final QM Energy] ==>> {self.qm_final_energy}")
             logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
         
         #Now we reinstall the coords into the protein!

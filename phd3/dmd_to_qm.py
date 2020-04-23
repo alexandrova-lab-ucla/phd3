@@ -464,6 +464,7 @@ def coord_to_protein(protein):
                 
             else:
                 logger.error("Label file is out of order from coord file!")
+                logger.error(f"Chain: {chain}, Res: {resNum}, atom: {atomID}")
                 raise ValueError("Label file")
 
         except ValueError:

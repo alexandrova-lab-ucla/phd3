@@ -62,7 +62,7 @@ class Atom:
 
 
     def pdb_line(self):
-        if self.element.upper() == "ZN":
+        if self.element.lower() in constants.METALS:
             return '{:<6}{:>5} {:<4} {} {}{:>4}    {:>8.3f}{:>8.3f}{:>8.3f}  1.00  0.00          {:>2}\n'.format(
               "HETATM",
               self.number, self.id, self.residue.name, self.residue.chain.name, self.residue.number,
