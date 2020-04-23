@@ -461,6 +461,7 @@ class TMcalculation:
             while shell.poll() is None:
                 logger.debug(shell.stdout.readline().strip())
 
+
     def calculation_alarm_handler(self, signum, frame):
         """
         Called if time is running out on TURBOMOLE GEO calculation.

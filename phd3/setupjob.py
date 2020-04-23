@@ -646,7 +646,8 @@ class setupTMjob:
             for line in controllines:
                 if "functional" in line:
                     x = controllines.index(line)
-                    controllines[x] = f"   functional {self._MINN}\n"
+                    controllines.pop(x)
+                    controllines.insert(x, f"   functional {self._MINN}\n")
 
         if self._raw_parameters["weight"]:
             logger.debug("Adding weight derivatives")
@@ -662,10 +663,12 @@ class setupTMjob:
 
         try:
             logger.debug("Saving edited control file")
-            with open("control", 'w') as control:
+            with open("_control", 'w') as control:
                 for line in controllines:
                     control.write(line)
-
+            
+            os.remove("control")
+            os.rename("_control", "control")
         except IOError:
             logger.exception("Failed to save new control file in post-define editing")
             raise
