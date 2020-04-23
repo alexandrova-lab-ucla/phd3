@@ -129,7 +129,7 @@ class iteration:
         logger.info("====================[Beginning DMD]====================")
         logger.info("")
 
-        if self.iter_number == 0:
+        if self.iter_number == -1:
             logger.info("On iteration 0, we skip the DMD portion")
             logger.info("and go straight to QM Optimization!")
             self.pdb_winner = [utilities.load_pdb(self.parameters["last pdb"]), 0.0]
@@ -770,11 +770,12 @@ class iteration:
         
         if os.path.isfile("energy"):
             with open('energy', 'r') as energyFile:
+                i = 0
                 for i,l in enumerate(energyFile):
                     pass
                 
                 i -= 1
-                total_cycles = i
+                total_cycles = i if i > 0 else 0
 
             if total_cycles >= qm_params["geo_iterations"]:
                 logger.info(f"Previous run completed max number of cycles: {total_cycles}")
