@@ -50,13 +50,13 @@ def addH(protein):
     logger.debug("Removing chimeraddh.com")
     os.remove("chimeraaddh.com")
     logger.debug("Removing _temp.pdb")
-    os.remove("_temp.pdb")
+#    os.remove("_temp.pdb")
 
     pro = utilities.load_pdb("addh.pdb")
 
     pro.reformat_protein()
     logger.debug("Removing addh.pdb")
-    os.remove("addh.pdb")
+#    os.remove("addh.pdb")
 
     return pro
 

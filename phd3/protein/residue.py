@@ -35,6 +35,7 @@ class Residue:
 
     def add_atom(self, atom):
         atom.residue = self
+        atom.verify_element()
         atom.chain = self.chain
         self.atoms.append(atom)
 

@@ -1058,7 +1058,7 @@ class setupDMDjob:
                             inConstr_file.write(f"Static {atoms.write_inConstr()}\n")
 
                             for bonded_atoms in atoms.bonds:
-                                if bonded_atoms.element != "h" and bonded_atoms.element not in constant.METALS:
+                                if bonded_atoms.element.lower() != "h" and bonded_atoms.element.lower() not in constants.METALS:
                                     logger.debug(f"Restricting motion of atom {bonded_atoms} and atom {metal} by {0.05}")
                                     inConstr_file.write(
                                         f"AtomPairRel {bonded_atoms.write_inConstr()} {metal.write_inConstr()} -{0.05} +{0.05}\n")
