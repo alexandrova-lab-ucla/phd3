@@ -55,8 +55,13 @@ class Protein:
                     atom_num = 0
                     while atom_num < len(self.chains[chain_num].residues[residue_num].atoms):
                         # Remove metal from this, and make it its own residue essentially
-                        if self.chains[chain_num].residues[residue_num].atoms[atom_num].element in constants.METALS:
+                        if self.chains[chain_num].residues[residue_num].atoms[atom_num].element.lower() in constants.METALS:
                             self._logger.debug(f"Found a metal: {self.chains[chain_num].residues[residue_num].atoms[atom_num]} in residue {self.chains[chain_num].residues[residue_num]}")
+                            
+                            if self.chains[chain_num].residues[residue_num].atoms[atom_num].element.lower() == "zn":
+                                if self.chains[chain_num].residues[residue_num].atoms[atom_num].id.lower() in constants.METALS:
+                                    self.chains[chain_num].residues[residue_num].atoms[atom_num].element = self.chains[chain_num].residues[residue_num].atoms[atom_num].id.capitalize()
+
                             self.metals.append(self.chains[chain_num].residues[residue_num].atoms.pop(atom_num))
                             atom_num -= 1
 
@@ -147,17 +152,17 @@ class Protein:
                 atom_num += 1
 
             # Issue with assigning chain to atom
-            for residue in self.non_residues:
+            for res in self.non_residues:
                 start = 100
-                for atom in residue.atoms:
+                for atom in res.atoms:
                     atom.id = f"{atom.element.upper()[0]}{start}"
                     start += 1
 
-                self._logger.debug(f"Adding residue {residue} to substrate chain")
-                self.sub_chain.add_residue(residue)
-                residue.number = res_num
-                residue.inConstr_number = res_num
-                for atom in residue.atoms:
+                self._logger.debug(f"Adding residue {res} to substrate chain")
+                self.sub_chain.add_residue(res)
+                res.number = res_num
+                res.inConstr_number = res_num
+                for atom in res.atoms:
                     atom.number = atom_num
                     atom_num += 1
 
@@ -410,13 +415,13 @@ class Protein:
         atom_list = [atom for c in self.chains[:-1]\
                             for r in c.residues\
                                 for atom in r.atoms\
-                                if atom.element in constants.HEAVY_ATOMS\
+                                if atom.element.lower() in constants.HEAVY_ATOMS\
                                 and np.linalg.norm(atom.coords - metal.coords) < cutoff]
 
         if not self.sub_chain.residues:
             atom_list.extend([atom for r in self.chains[-1].residues\
                                     for atom in r.atoms\
-                                        if atom.element in constants.HEAVY_ATOMS\
+                                        if atom.element.lower() in constants.HEAVY_ATOMS\
                                         and np.linalg.norm(atom.coords - metal.coords) < cutoff])
        
         return atom_list

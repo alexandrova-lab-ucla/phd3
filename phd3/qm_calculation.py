@@ -163,6 +163,11 @@ class TMcalculation:
 
         #We now want to transfer all of the files from this directory to the scratch directory if a diff. directory
         if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
+            #For better distinshin
+            self._scratch_directory = os.path.join(self._scratch_directory, os.path.basename(self._submit_directory))
+            if not os.path.isdir(self._scratch_directory):
+                os.mkdir(self._scratch_directory)
+
             logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
             self._src_files = os.listdir(self._submit_directory)
             for file_name in self._src_files:

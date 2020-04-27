@@ -11,6 +11,7 @@ import signal
 import json
 import shutil
 import sys
+from timeit import default_timer as timer
 
 #PHD Imports
 from . import iteration
@@ -32,11 +33,9 @@ class controller:
         self._iteration = 0
         self._parameters = {}
         self._curr_iterat = None
-
+        self._start = timer()
         self._stop = False
 
-        #In case a signal is sent to stop!
-        signal.signal(signal.SIGUSR1, self.alarm_handler)
 
         if not os.path.isfile("phdinput.json"):
             logger.error("PHDinput.json does not exist")
@@ -94,33 +93,9 @@ class controller:
         else:
             self._parameters["last pdb"] = os.path.abspath(self._parameters["pdb file"])
 
-        #Now we move the necessary files to the new directory!!
-        if os.path.abspath(self._scratch) != os.path.abspath(self._submit_directory):
-            if not os.path.isdir(self._scratch):
-                logger.debug("Making scratch directory")
-                os.mkdir(self._scratch)
-            
-            if self._iteration == last_iteration_directory:
-                if os.path.isdir(os.path.join(self._scratch, f"Iteration_{last_iteration_directory}")):
-                    shutil.rmtree(os.path.join(self._scratch, f"Iteration_{last_iteration_directory}"))
-
-                shutil.copytree(f"Iteration_{last_iteration_directory}", os.path.join(self._scratch, f"Iteration_{last_iteration_directory}"))
-                
-            #copy over the phdenergy file
-            if os.path.isfile("phd_energy"):
-                shutil.copy("phd_energy", self._scratch)
-
-            logger.debug("Changing directory from {os.getcwd()} to {self._scratch}")            
-            os.chdir(self._scratch)
-
-        if self._time != -1:
-            logger.info("Starting the timer")
-            signal.signal(signal.SIGALRM, self.alarm_handler)
-            signal.alarm((self._time* 60 - 55) * 60)
-
         while not self._stop and self._iteration <= self._parameters["Max Iterations"]:
             #This is the loop we stay in until we need to quit
-            self._curr_iterat = iteration.iteration(f"Iteration_{self._iteration}", os.path.abspath("."), self._parameters, self._iteration, self._cores) 
+            self._curr_iterat = iteration.iteration(self, f"Iteration_{self._iteration}", os.path.abspath("."), self._parameters, self._iteration, self._cores, scratch=self._scratch) 
             self._curr_iterat.continue_calculation()
             
             #Checks to see if the iteration is telling us to stop
@@ -132,24 +107,6 @@ class controller:
 
             self._iteration += 1
 
-        if self._time != -1:
-            logger.info("Turning off timer")
-            signal.alarm(0)
-
-        if os.path.abspath(self._scratch) != os.path.abspath(self._submit_directory):
-            dirs = [d for d in os.listdir() if "Iteration_" in d]
-            for d in dirs:
-                if os.path.isdir(os.path.join(self._submit_directory, d)):
-                    shutil.rmtree(os.path.join(self._submit_directory, d))
-
-                shutil.copytree(d, os.path.join(self._submit_directory, d))
-
-            if os.path.isfile("phd_energy"):
-                shutil.copy("phd_energy", self._submit_directory)
-            
-            logger.debug("Changing directory from {os.getcwd()} to {self._submit_directory}")            
-            os.chdir(self._submit_directory)
-        
         if self._stop and self._iteration <= self._parameters["Max Iterations"]:
             if self._parameters["Resubmit"]:
                 submitphd.main(_cores = self._cores, _time=self._time)
@@ -157,23 +114,14 @@ class controller:
         elif self._iteration > self._parameters["Max Iterations"]:
             logger.info("Finished with all QM/DMD cyles")
 
-    def alarm_handler(self, signum, frame):
-        #Alarm went off
-        logger.info("Alarm went off!")
-        self._stop = True
+    def time_left(self):
+        if self._time == -1:
+            return -1
 
-        #Propogate down to the current iteration
-        self._curr_iterat.signal_alarm()
+        now = timer()
+        time_elapsed = int(now-self._start)/3600
+        if self._time < time_elapsed:
+            return 0
 
-        if self._scratch != self._submit_directory:
-            dirs = [d for d in os.listdir(self._scratch) if "Iteration_" in d]
-            for d in dirs:
-                if os.path.isdir(os.path.join(self._submit_directory, d)):
-                    shutil.rmtree(os.path.join(self._submit_directory, d))
+        return self._time - time_elapsed 
 
-                shutil.copytree(os.path.join(self._scratch, d), os.path.join(self._submit_directory, d))
-
-            if os.path.isfile(os.path.join(self._scratch, "phd_energy")):
-                shutil.copy(os.path.join(self._scratch, "phd_energy"), self._submit_directory)
-        
-        signal.alarm(0)

@@ -79,6 +79,15 @@ class Atom:
     def label(self):
         return f"{self.chain.name}:{self.residue.number}:{self.id}"
 
+    def verify_element(self):
+        if self.element.upper() == 'ZN':
+            if self.residue is not None:
+                actual_res_name = ''.join([i for i in self.residue.name if not i.isdigit()])
+                if len(actual_res_name) == 3:
+                    actual_res_name = actual_res_name[:-1]
+                
+                self.id = actual_res_name.upper()
+
     def add_bond(self, atom):
         self.bonds.append(atom)
         atom.bonds.append(self)
