@@ -673,6 +673,7 @@ class iteration:
             end = timer()
 
             if os.path.isfile("energy"):
+                i = 0
                 with open("energy", 'r') as energyFile:
                     for i,l in enumerate(energyFile):
                         pass
@@ -840,6 +841,7 @@ class iteration:
                 #We need to quit and save everything
                 self.stop = True
                 logger.info(f"SCF iterations exceeded")
+                self.parameters["Resubmit"] = False
                 self.next_step = None
                 return
 

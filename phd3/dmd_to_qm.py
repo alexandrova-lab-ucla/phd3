@@ -459,7 +459,7 @@ def coord_to_protein(protein):
             continue
 
         try:
-            if protein.get_atom([chain, resNum, atomID]).element == atom[1]:
+            if protein.get_atom([chain, resNum, atomID]).element.upper() == atom[1].upper():
                 protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
                 
             else:
