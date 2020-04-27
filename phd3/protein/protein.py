@@ -57,6 +57,11 @@ class Protein:
                         # Remove metal from this, and make it its own residue essentially
                         if self.chains[chain_num].residues[residue_num].atoms[atom_num].element.lower() in constants.METALS:
                             self._logger.debug(f"Found a metal: {self.chains[chain_num].residues[residue_num].atoms[atom_num]} in residue {self.chains[chain_num].residues[residue_num]}")
+                            
+                            if self.chains[chain_num].residues[residue_num].atoms[atom_num].element.lower() == "zn":
+                                if self.chains[chain_num].residues[residue_num].atoms[atom_num].id.lower() in constants.METALS:
+                                    self.chains[chain_num].residues[residue_num].atoms[atom_num].element = self.chains[chain_num].residues[residue_num].atoms[atom_num].id.capitalize()
+
                             self.metals.append(self.chains[chain_num].residues[residue_num].atoms.pop(atom_num))
                             atom_num -= 1
 

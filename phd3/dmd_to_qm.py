@@ -58,6 +58,20 @@ def addH(protein):
     logger.debug("Removing addh.pdb")
 #    os.remove("addh.pdb")
 
+    #Remove all epsilon hydrogens on the histidines
+    for chain in pro.chains:
+        for res in chain.residues:
+            if res.name.upper() == "HIS":
+                epsilon_nitrogen = res.get_atom("NE2")
+                for atom in epsilon_nitrogen.bonds:
+                    if atom.id == "2HNE":
+                        #DELETE THIS ATOM, no good two-timer
+                        epsilon_nitrogen.bonds.remove(atom)
+                        res.atoms.remove(atom)
+                        del atom
+                        break
+                
+
     return pro
 
 def protein_to_coord(protein, chop_params):
@@ -459,9 +473,12 @@ def coord_to_protein(protein):
             continue
 
         try:
-            if protein.get_atom([chain, resNum, atomID]).element == atom[1]:
+            if protein.get_atom([chain, resNum, atomID]).element != "Zn" and protein.get_atom([chain, resNum, atomID]).element.lower() == atom[1].lower():
                 protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
-                
+           
+            elif protein.get_atom([chain, resNum, atomID]).id.lower() == atom[1].lower():
+                protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
+
             else:
                 logger.error("Label file is out of order from coord file!")
                 logger.error(f"Chain: {chain}, Res: {resNum}, atom: {atomID}")

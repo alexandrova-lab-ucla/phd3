@@ -39,7 +39,7 @@ __all__ = [
 class iteration:
 
     """Upon creati"""
-    def __init__(self, directory:str, root_dir:str, parameters:dict, iteration:int, cores=1):
+    def __init__(self, controller, directory:str, root_dir:str, parameters:dict, iteration:int, cores=1, scratch="./"):
         
         #Iteration directory, iteration number, root directory of job, number of cores to use, and parameters saved here
         self.directory = os.path.abspath(directory)
@@ -47,6 +47,8 @@ class iteration:
         self.root_directory = root_dir
         self.parameters = parameters
         self.cores = cores
+        self.scratch = scratch
+        self.controller = controller
         
         #Set to True if a timer went off, or we need to stop the iteration
         self.stop = False
@@ -110,6 +112,8 @@ class iteration:
             logger.info(f"Time elapsed: {datetime.timedelta(seconds = int(end -start))}")
             logger.info("")
             logger.info("")
+            
+            self.stop = self.timer_went_off()
 
         if self.stop:
             logger.debug("Timer went off, we are ending this iteration early")
@@ -124,6 +128,12 @@ class iteration:
         #Now we go back to original directory
         logger.debug(f"Changing to iteration directory: {self.root_directory}")
         os.chdir(self.root_directory)
+
+    def timer_went_off(self):
+        if self.controller.time_left() <=1:
+            return True
+        
+        return self.stop
 
     def performDMD(self):
         logger.info("====================[Beginning DMD]====================")
@@ -235,8 +245,8 @@ class iteration:
                     temp_params["Final Temperature"] = self.parameters['dmd params']['Initial Temperature']
                     temp_params["Time"] = self.parameters['Equilibrate']['Time']
 
-                    calc = dmd_simulation(cores = self.cores, parameters = temp_params)
-
+                    calc = dmd_simulation(cores = self.cores, parameters = temp_params, scratch=self.scratch)
+                    self.stop = self.timer_went_off()
                     logger.debug("Changing directory to {os.getcwd()}")
                     os.chdir("..")
 
@@ -273,8 +283,8 @@ class iteration:
 
                     logger.info("")
                     logger.info(f">>>> Run {self.dmd_steps:0>2d} >>>>")
-                    calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"])
-
+                    calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"], scratch=self.scratch)
+                    self.stop = self.timer_went_off()
                     curr_energy = dmd_simulation.get_average_potential_energy(self.parameters["dmd params"]["Echo File"])
                     dmd_average_energies.append(curr_energy)
 
@@ -321,9 +331,11 @@ class iteration:
                 
                 logger.info("")
                 logger.info(">>>> Run 01 >>>>")
-                calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"])
+                calc = dmd_simulation(cores = self.cores, parameters = self.parameters["dmd params"], scratch=self.scratch)
                 self.final_dmd_average_energy = dmd_simulation.get_average_potential_energy()
-        
+                self.stop = self.timer_went_off()
+
+
         if self.stop:
             logger.info("Stop signal received while performing DMD simulation")
         
@@ -669,19 +681,21 @@ class iteration:
             qm_params = self.parameters["qm params"].copy()
             qm_params["calculation"] = 'sp'
             start = timer()
-            sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
+            sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params, scratch=self.scratch, time=self.controller.time_left())
             end = timer()
+            self.stop = self.timer_went_off()
 
             if os.path.isfile("energy"):
                 with open("energy", 'r') as energyFile:
                     for i,l in enumerate(energyFile):
                         pass
                 
-                if i < 2:
+                if i < 2 and not self.stop:
                     logger.info(f"Singlepoint failed for {struct.name}")
                     logger.info("Trying again")
-                    sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
+                    sp = qm_calculation.TMcalculation(self.cores, parameters=qm_params, scratch=self.scratch, time=self.controller.time_left())
                     end = timer()
+                    self.stop=self.timer_went_off()
 
             else:
                 logger.error("NO ENERGY FILE FOUND")
@@ -767,7 +781,19 @@ class iteration:
         
         logger.debug("Changing directory to Optimization")
         os.chdir("Optimization")
-        
+       
+        if os.path.isdir("trun_backup"):
+            logger.debug("Overriding directory with trun_backup")
+            for f in [f for f in os.listdir("./") if os.path.isfile(f)]:
+                os.remove(f)
+
+            for f in [f for f in os.listdir("./trun_backup")]:
+                f = os.path.join("./trun_backup", f)
+                if os.path.isfile(f):
+                    shutil.copy(f, "./")
+
+            shutil.rmtree("trun_backup")
+
         if os.path.isfile("energy"):
             with open('energy', 'r') as energyFile:
                 i = 0
@@ -834,8 +860,11 @@ class iteration:
                     pass
 
             start = timer()
-            geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params)
+            geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params, time=self.controller.time_left(), scratch=self.scratch)
             end = timer()
+            #Get information on if the timer went off
+            self.stop = geo._timer_went_off
+            
             if geo.scfiterfail():
                 #We need to quit and save everything
                 self.stop = True
@@ -883,7 +912,9 @@ class iteration:
         logger.debug(f"Changing directory to {os.path.abspath('..')}")
         os.chdir("..")
 
-        self.to_next_iteration.write_pdb("to_next_iteration.pdb")
+        if not self.stop:
+            self.to_next_iteration.write_pdb("to_next_iteration.pdb")
+        
         self.next_step = self.finish_iteration
       
         logger.info("")

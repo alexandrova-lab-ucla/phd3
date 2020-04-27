@@ -174,6 +174,10 @@ class dmd_simulation:
             logger.debug("Commands passed, using those")
 
         if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
+            self._scratch_directory = os.path.join(self._scratch_directory, os.path.basename(self._scratch_directory))
+            if not os.path.isdir(self._scratch_directory):
+                os.mkdir(self._scratch_directory)
+
             logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
             self._src_files = os.listdir(self._submit_directory)
             for file_name in self._src_files:
