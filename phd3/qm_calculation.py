@@ -173,7 +173,11 @@ class TMcalculation:
             for file_name in self._src_files:
                 full_file_name = os.path.join(self._submit_directory, file_name)
                 dest_file_name = os.path.join(self._scratch_directory, file_name)
-                if os.path.isfile(full_file_name):
+                if file_name.startswith("."):
+                    #These are hidden files...can be quite corrupt
+                    continue
+
+                elif os.path.isfile(full_file_name):
                     shutil.copy(full_file_name, dest_file_name)
                 
                 elif os.path.isdir(full_file_name):
@@ -203,7 +207,7 @@ class TMcalculation:
             if self._time_to_run != -1:
                 logger.info("Starting the timer")
                 signal.signal(signal.SIGALRM, self.calculation_alarm_handler)
-                signal.alarm((self._time_to_run * 60 - 45) * 60)
+                signal.alarm(int((self._time_to_run * 60 - 45) * 60))
             
             start = timer()
             calc()

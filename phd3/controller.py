@@ -123,13 +123,6 @@ class controller:
         if self._time < time_elapsed:
             return 0
 
-        left = self._time - time_elapsed
-        minutes_left = (left*60)%60
-        #close enough to an hour that we might as well treat it as such, 
-        #especially when it comes to other programs like turbopy or dmd where it actually will at least take 45 min
-        #to shut down
-        if minutes_left > 45:
-            left += 1
 
-        return int(self._time - time_elapsed) 
+        return self._time - time_elapsed 
 
