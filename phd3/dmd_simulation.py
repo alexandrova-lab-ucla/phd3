@@ -193,16 +193,6 @@ class dmd_simulation:
                     shutil.copytree(full_file_name, dest_file_name)
 
             os.chdir(os.path.abspath(self._scratch_directory))
-            # Now we have to change the logger output so that we can properly save the output
-            # TODO: have it use the formatter from an old handler instead!
-            node_logger = logging.FileHandler("./tmpLog", 'a')
-            formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
-            node_logger.setFormatter(formatter)
-            node_logger.setLevel(logging.INFO)
-            # These are the old_handlers, we will save them when we go back
-            # We don't remove them so that we can continue to get updates on the node
-            old_handlers = logger.handlers[:]
-            logger.addHandler(node_logger)
 
         # We can arm the timer
         if self._time_to_run != -1:
@@ -323,34 +313,6 @@ class dmd_simulation:
                     shutil.copytree(full_file_name, dest_file_name)
 
             os.chdir(os.path.abspath(self._submit_directory))
-            # Now we swap back to the initial handlers
-            # We want to get rid of all of our old handlers
-            for hdlr in logger.handlers[:]:
-                logger.removeHandler(hdlr)
-
-            # This appends our temp file to our output file!
-            # TODO, allow the ext://sys.stdout to be replaced by whatever the initial logger stream was...
-            appendHandler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter("%(message)s")
-            appendHandler.setFormatter(formatter)
-            logger.addHandler(appendHandler)
-            try:
-                with open('tmpLog') as logFile:
-                    for line in logFile:
-                        logger.info(line.rstrip())
-                os.remove("tmpLog")
-
-            except IOError:
-                logger.critical("Error with appending node log file to initial log file")
-
-            # Officially gets rid of everything
-            for hdlr in logger.handlers[:]:
-                logger.removeHandler(hdlr)
-
-            # Now we go back to our initial handlers
-            for hdlr in old_handlers:
-                logger.addHandler(hdlr)
-
 
     def run_dmd(self, parameters, start_time: int, use_restart: bool):
         # Remake the start file with any changed parameters
