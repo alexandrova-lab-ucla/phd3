@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Can be installed on any system
+# POSIX compliant
+
 # Before running this script, please edit the phd_config.json file with the 
 # correct information regarding paths to DMD binaries, parameters, and 
 # TURBOMOLE.
