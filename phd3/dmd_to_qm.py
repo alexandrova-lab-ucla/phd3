@@ -59,6 +59,7 @@ def addH(protein):
 #    os.remove("addh.pdb")
 
     #Remove all epsilon hydrogens on the histidines
+    #TODO May have to check if the delta hydrogren is there
     for chain in pro.chains:
         for res in chain.residues:
             if res.name.upper() == "HIS":

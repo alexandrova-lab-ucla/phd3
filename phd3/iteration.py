@@ -888,6 +888,7 @@ class iteration:
                         self.stop = True
                         logger.warn("Energy file is empty")
                         self.next_step = None
+                        self.parameters["Resubit"] = False
                         return
 
                 logger.info(f"Failed to converge in a total of {total_cycles} geometry cycles")

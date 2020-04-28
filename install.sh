@@ -36,6 +36,8 @@ echo ">>>> Copying files to ${PHDDIR}"
 cp phd_config.json ${PHDDIR}/
 cp phd3/resources/logger_config.json ${PHDDIR}/
 
+[ -f "${HOME}/.turbopy/submit.j2" ] && cp ${HOME}/.turbopy/submit.j2 ${PHDDIR} && echo "Submit file installed" || echo "Not submit file installed"
+
 # Uninstall conflicting modules
 pip list --format=columns | grep turbopy &> /dev/null && pip uninstall turbopy && echo "Remove all turbopy scripts from ~/.local/bin"
 pip list --format=columns | grep dmdpy &> /dev/null && pip uninstall dmdpy && echo "Remove all turbopy scripts from ~/.local/bin"
