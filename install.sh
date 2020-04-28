@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Before running this script, please edit the phd_config.json file with the 
 # correct information regarding paths to DMD binaries, parameters, and 
@@ -27,15 +27,27 @@
 
 echo "
 >>>> Installing PHD3 >>>>"
-mkdir ~/.phd3
+[ -d "${XDG_CONFIG_HOME:-$HOME/.config}" ] && PHDDIR="${XDG_CONFIG_HOME:-$HOME/.config}/phd3" || PHDDIR="${HOME}/.phd3"
 
-echo ">>>> Copying files to ${HOME}/.phd3"
-cp phd_config.json ~/.phd3/
-cp phd3/resources/logger_config.json ~/.phd3/
+# Make the phddirectory
+[ -d  "$PHDDIR" ] || mkdir $PHDDIR
 
-pip install --user ./ || exit 1
-echo "export PATH=$HOME/.local/bin:\$PATH" >> ~/.bashrc
-source ~/.bashrc
+echo ">>>> Copying files to ${PHDDIR}"
+cp phd_config.json ${PHDDIR}/
+cp phd3/resources/logger_config.json ${PHDDIR}/
+
+# Uninstall conflicting modules
+pip list --format=columns | grep turbopy &> /dev/null && pip uninstall turbopy && echo "Remove all turbopy scripts from ~/.local/bin"
+pip list --format=columns | grep dmdpy &> /dev/null && pip uninstall dmdpy && echo "Remove all turbopy scripts from ~/.local/bin"
+
+# Actually load
+pip list --format=columns | grep phd3 &> /dev/null || pip install --user ./ || echo "Failed to install using pip" && exit 1
+
+echo "
+Please 'export PATH=\$HOME/.local/bin:\$PATH' in your profile so 
+that you have access to the binaries
+" 
+
 echo ">>>> Successfully installed PHD3
 "
 

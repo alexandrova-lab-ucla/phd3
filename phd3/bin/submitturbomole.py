@@ -99,16 +99,21 @@ def main(_cores: int=None, _time: int=None, _nodes: int=1, _sub: bool=True):
 
     # Make the submit script for the queuing system
     home = os.path.expanduser("~")
+    path_to_template = os.path.join(home, ".config/phd3")
+    
+    if not os.path.isdir(path_to_template):
+        path_to_template = os.path.join(home, ".phd3")
+
     logger.debug(
-        f"Finding file in: {os.path.join(home, '.phd3')} ")
-    templateLoader = jinja2.FileSystemLoader(searchpath=os.path.join(home, '.phd3'))
+        f"Finding file in: {path_to_template} ")
+    templateLoader = jinja2.FileSystemLoader(searchpath=path_to_template)
     templateEnv = jinja2.Environment(loader=templateLoader)
     TEMPLATE_FILE = "submit.j2"
     try:
         template = templateEnv.get_template(TEMPLATE_FILE)
 
     except jinja2.exceptions.TemplateNotFound:
-        logger.error(f"Template file not found in {os.path.join(home, '.phd3')}")
+        logger.error(f"Template file not found in {path_to_template}")
         raise
 
     logger.debug("Found template file!")

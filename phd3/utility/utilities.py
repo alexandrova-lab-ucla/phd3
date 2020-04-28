@@ -213,7 +213,7 @@ def create_config():
         os.mkdir(os.path.join(home, '.phd3'))
 
     except FileExistsError:
-        logger.debug(".turbopy directory already exists, continuing")
+        logger.debug(".phd3 directory already exists, continuing")
 
     logger.debug("Placing default phd_config.json in the .turbopy directory")
     shutil.copy(pkg_resources.resource_filename('phd3.resources', 'phd_config.json'), os.path.join(home, '.phd3'))
@@ -227,17 +227,22 @@ def load_phd_config():
     :return: Dictionary of the config file
     """
     home = os.path.expanduser("~")
-    path_to_config = os.path.join(home, '.phd3/phd_config.json')
+    
+    # Check in the .config directory first, and then in the home directory
+    path_to_config = os.path.join(home, ".config/phd3/phd_config.json")
+    
+    if not os.path.isdir(os.path.join(home, ".config/phd3")) and not os.path.isfile(path_to_config):
+        path_to_config = os.path.join(home, '.phd3/phd_config.json')
 
-    if not os.path.isdir(os.path.join(home, '.phd3')):
-        create_config()
-        raise ValueError(".phd3 missing")
+        if not os.path.isdir(os.path.join(home, '.phd3')):
+            create_config()
+            raise ValueError(".phd3 missing")
 
-    if not os.path.isfile(path_to_config):
-        logger.error("Config file not in .phd3 directory")
-        logger.warning("Copying default logger over now")
-        shutil.copy(pkg_resources.resource_filename('phd3.resources', 'phd_config.json'), os.path.join(home, '.phd3'))
-        raise ValueError("phd_config.json file missing")
+        if not os.path.isfile(path_to_config):
+            logger.error("Config file not in .phd3 directory")
+            logger.warning("Copying default logger over now")
+            shutil.copy(pkg_resources.resource_filename('phd3.resources', 'phd_config.json'), os.path.join(home, '.phd3'))
+            raise ValueError("phd_config.json file missing")
 
     try:
         logger.debug("Loading in phd_config")
@@ -255,16 +260,18 @@ phd_config = load_phd_config()
 def load_logger_config():
     """Loads in the Logger Config File"""
     home = os.path.expanduser("~")
-    path_to_config = os.path.join(home, '.phd3/logger_config.json')
+    path_to_config = os.path.join(home, ".config/phd3/logger_config.json")
+    
+    if not os.path.isdir(os.path.join(home, ".config/phd3")) and not os.path.isfile(path_to_config):
+        path_to_config = os.path.join(home, '.phd3/logger_config.json')
+        if not os.path.isdir(os.path.join(home, '.phd3')):
+            create_config()
+            raise ValueError(".phd3 missing")
 
-    if not os.path.isdir(os.path.join(home, '.phd3')):
-        create_config()
-        raise ValueError(".phd3 missing")
-
-    if not os.path.isfile(path_to_config):
-        print("Logger file not in .phd3 directory")
-        print("Copying default logger over now")
-        shutil.copy(pkg_resources.resource_filename('phd3.resources', 'logger_config.json'), os.path.join(home, '.phd3'))
+        if not os.path.isfile(path_to_config):
+            print("Logger file not in .phd3 directory")
+            print("Copying default logger over now")
+            shutil.copy(pkg_resources.resource_filename('phd3.resources', 'logger_config.json'), os.path.join(home, '.phd3'))
 
     try:
         logger.debug("Loading in logger_config")
