@@ -65,7 +65,7 @@ def addH(protein):
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
                 for atom in epsilon_nitrogen.bonds:
-                    if atom.id == "2HNE":
+                    if atom.id == "2HNE" or atom.id == "HHNE":
                         #DELETE THIS ATOM, no good two-timer
                         epsilon_nitrogen.bonds.remove(atom)
                         res.atoms.remove(atom)

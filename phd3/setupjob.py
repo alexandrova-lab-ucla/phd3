@@ -18,6 +18,7 @@ import random
 #PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
 import phd3.protein.protein as protein
+from phd3 import dmd_to_qm
 
 __all__ = [
     'setupTMjob',
@@ -965,7 +966,7 @@ class setupDMDjob:
         utilities.make_start_file(self._raw_parameters)
         logger.info("[titratable setup] ==>> SUCCESS")
 
-    def short_dmd(self):
+    def short_dmd(self, keep_movie=False, time=1):
         try:
             with open("dmd_start_short", 'w') as dmdstart:
                 dmdstart.write(f"THERMOSTAT     {self._raw_parameters['Thermostat']}\n")
@@ -979,7 +980,7 @@ class setupDMDjob:
                 dmdstart.write(f"MOVIE_FILE     {self._raw_parameters['Movie File']}\n")
                 dmdstart.write(f"START_TIME     0\n")
                 dmdstart.write(f"MOVIE_DT       1\n")
-                dmdstart.write(f"MAX_TIME       1\n")
+                dmdstart.write(f"MAX_TIME       {time}\n")
 
         except IOError:
             logger.exception("Error writing out dmd_start file")
@@ -1017,9 +1018,12 @@ class setupDMDjob:
         logger.debug("Was able to create a pdb from the short DMD run")
         logger.debug("Good to go, removing old file now")
         os.remove("check.pdb")
-        os.remove(self._raw_parameters['Movie File'])
+        if not keep_movie:
+            os.remove(self._raw_parameters['Movie File'])
+        
         os.remove(self._raw_parameters['Echo File'])
         os.remove(self._raw_parameters['Restart File'])
+        
         os.remove("dmd_start_short")
 
     def make_topparam(self):
@@ -1133,33 +1137,24 @@ class setupDMDjob:
         # Update the custom protonation states
         for new_state, state in zip(new_parameters["Custom protonation states"], self._protonate):
             new_state[0] = state[0].chain.name
-            new_state[1] = state[0].residue.number
+            new_state[1] = state[0].number
             new_state[2] = state[1][0]
             if len(new_state) == 4:
                 new_state[3] = state[1][1]
 
         # Update the frozen atoms
-        for new_state, state in zip(new_parameters["Frozen atoms"]["Chains"], self._static["chains"]):
-            new_state = state.name
-
-        for new_state, state in zip(new_parameters["Frozen atoms"]["Residues"], self._static["residues"]):
-            new_state[0] = state.chain.name
-            new_state[1] = state.number
-
-        for new_state, state in zip(new_parameters["Frozen atoms"]["Atoms"], self._static["atoms"]):
-            new_state[0] = state.chain.name
-            new_state[1] = state.residue.number
-            new_state[2] = state.id
+        new_parameters["Frozen atoms"]["Chains"].clear()
+        new_parameters["Frozen atoms"]["Residues"].clear()
+        new_parameters["Frozen atoms"]["Atoms"].clear()
+        
+        for a in self._static:
+            new_parameters["Frozen atoms"]["Atoms"].append(a.label())
 
         # Update the displacement atoms
-        for new_state, state in zip(new_parameters["Restrict Displacement"], self._displacement):
-            new_state[0][0] = state[0].chain.name
-            new_state[0][1] = state[0].residue.number
-            new_state[0][2] = state[0].id
-            new_state[1][0] = state[1].chain.name
-            new_state[1][1] = state[1].residue.number
-            new_state[1][2] = state[1].id
-            new_state[2] = state[2]
+        new_parameters["Restrict Displacement"].clear()
+        for state in self._displacement:
+            new_parameters["Restrict Displacement"].append([state[0].label(), state[1].label(), state[2]])
+            print(new_parameters["Restrict Displacement"][-1])
 
         return new_parameters
 
@@ -1170,7 +1165,55 @@ class setupPHDjob:
     #convert pdb to coord file (ie the chop)
     #go from coord to pdb again (should be no issue here)
     #save new phdinput file (expanded from what it was) with updated params
-    def __init__():
-        pass
+    def __init__(self):
 
+        if not os.path.isfile("phdinput.json"):
+            logger.error("No phdinput.json file")
+            logger.error("Copying over a default file to fill in")
+            sys.exit(0)
+
+        with open("phdinput.json") as param_file:
+            self._parameters = json.load(param_file)
+
+        #Load in the protein
+        protein = utilities.load_pdb(self._parameters["pdb file"])
+
+        #Get the qm_chop info to track those residues and atoms as well
+
+        if os.path.isdir("dmd_setup"):
+            shutil.rmtree("dmd_setup")
+
+        os.mkdir("dmd_setup")
+        os.chdir("dmd_setup")
+
+        sdj = setupDMDjob(pro=protein, parameters = self._parameters["dmd params"])
+        sdj.full_setup()
+        self._parameters["dmd params"] = sdj.updated_parameters()
+        sdj.short_dmd(keep_movie=True, time=50)
+
+        utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
+        last_protein = utilities.load_movie("movie.pdb")[-1]
+
+        os.chdir("..")
+        if os.path.isdir("qm_setup"):
+            shutil.rmtree("qm_setup")
+
+        os.mkdir("qm_setup")
+        os.chdir("qm_setup")
+
+        dmd_to_qm.protein_to_coord(last_protein, self._parameters["QM Chop"])
+        stj = setupTMjob(parameters=self._parameters["qm params"])
+
+        os.chdir("..")
+
+        shutil.copy("dmd_setup/initial.pdb", "start.pdb")
+        self._parameters["pdb file"] = "start.pdb"
+
+        #Write out the phdinput.json
+        with open("phdinput_o.json", "w") as param_file:
+            json.dump(self._parameters, param_file, indent=4)
+
+        logger.info("Finished setting up job")
+        logger.info("Check dmd_setup and qm_setup to ensure proper chop and parameter interpretation")
+        logger.info("Also note that phd will use the _start.pdb instead of the initial pdb provided")
 
