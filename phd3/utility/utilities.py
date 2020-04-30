@@ -402,12 +402,19 @@ def valid_dmd_parameters(parameters: dict):
     else:
         for state in parameters["Custom protonation states"]:
             try:
-                assert(len(state) == 3 or len(state) == 4)
                 assert(type(state[0]) == str)
-                assert(type(state[1]) == int and state[1] > 0)
-                assert(type(state[2]) == str)
-                if len(state) == 4:
-                    assert(type(state[3]) == int and state[3] >= -2)
+                if ":" in state[0]:
+                    assert(len(state) == 2 or len(state) == 3)
+                    assert(type(state[1]) == str)
+                    if len(state) == 3:
+                        assert(type(state[2]) == int)
+
+                else:
+                    assert(len(state) == 3 or len(state) == 4)
+                    assert(type(state[1]) == int)
+                    assert(type(state[2]) == str)
+                    if len(state) == 4:
+                        assert(type(state[3]) == int)
 
             except ValueError:
                 raise ParameterError(f"Invalid specification of protonation states: {state}")
@@ -431,8 +438,18 @@ def valid_dmd_parameters(parameters: dict):
         else:
             for residue in parameters["Frozen atoms"]["Residues"]:
                 try:
-                    assert(type(residue[0]) == str and residue[0].isalpha())
-                    assert(type(residue[1]) == int and residue[1] > 0)
+                    if type(residue) == list:
+                        assert(type(residue[0]) == str and residue[0].isalpha())
+                        assert(type(residue[1]) == int and residue[1] > 0)
+
+                    elif type(residue) == str:
+                        tmp = residue.split(":")
+                        assert(len(tmp) == 2)
+                        assert(type(tmp[0]) == str and tmp[0].isalpha())
+                        assert(int(tmp[1]) > 0)
+
+                    else:
+                        raise ValueError
 
                 except ValueError:
                     raise ParameterError(f"Incorrect value provided for frozen residue: {residue}")
@@ -443,9 +460,16 @@ def valid_dmd_parameters(parameters: dict):
         else:
             for atom in parameters["Frozen atoms"]["Atoms"]:
                 try:
-                    assert(type(atom[0]) is str and atom[0].isalpha())
-                    assert(type(atom[1]) is int and atom[1] > 0)
-                    assert(type(atom[2]) is str and atom[2].isalpha())
+                    if type(atom) == list:
+                        assert(type(atom[0]) is str and atom[0].isalpha())
+                        assert(type(atom[1]) is int and atom[1] > 0)
+                        assert(type(atom[2]) is str)
+
+                    elif type(atom) == str:
+                        tmp = atom.split(":")
+                        assert(len(tmp) == 3)
+                        assert(tmp[0].isalpha())
+                        assert(int(tmp[1]) > 0)
 
                 except ValueError:
                     raise ParameterError(f"Incorrect value provided for frozen atom: {atom}")
@@ -456,15 +480,32 @@ def valid_dmd_parameters(parameters: dict):
                 assert(len( id) == 3)
                 assert(type(id[2]) is float and id[2] > 0)
 
-                assert(len(id[0]) == 3)
-                assert(type(id[0][0]) is str and id[0][0].isalpha())
-                assert(type(id[0][1]) is int and id[0][1] > 0)
-                assert(type(id[0][2]) is str and id[0][0].isalpha())
+                if type(id[0]) == list:
+                    assert(len(id[0]) == 3)
+                    assert(type(id[0][0]) is str and id[0][0].isalpha())
+                    assert(type(id[0][1]) is int and id[0][1] > 0)
+                    assert(type(id[0][2]) is str)
 
-                assert(len(id[1]) == 3)
-                assert (type(id[1][0]) is str and id[1][0].isalpha())
-                assert (type(id[1][1]) is int and id[1][1] > 0)
-                assert (type(id[1][2]) is str and id[1][0].isalpha())
+                elif type(id[0]) == str:
+                    tmp = id[0].split(":")
+                    assert(len(tmp) == 3)
+                    assert(tmp[0].isalpha())
+                    assert(int(tmp[1]) > 0)
+                
+                else:
+                    raise ValueError
+                
+                if type(id[1]) is list:
+                    assert(len(id[1]) == 3)
+                    assert (type(id[1][0]) is str and id[1][0].isalpha())
+                    assert (type(id[1][1]) is int and id[1][1] > 0)
+                    assert (type(id[1][2]) is str)
+
+                elif type(id[1]) is str:
+                    tmp = id[1].split(":")
+                    assert(len(tmp) == 3)
+                    assert(type(tmp[0]).isalpha())
+                    assert(int(tmp[1]) > 0)
 
                 assert(id[0] != id[1])
 

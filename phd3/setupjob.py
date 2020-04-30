@@ -849,7 +849,29 @@ class setupDMDjob:
         self._displacement = []
         if "Restrict Displacement" in self._raw_parameters.keys():
             for atom_pair in self._raw_parameters["Restrict Displacement"]:
-                self._displacement.append([self._protein.get_atom(atom_pair[0]), self._protein.get_atom(atom_pair[1]), atom_pair[2]])
+                if type(atom_pair[0]) == list:
+                    res1 = self._protein.get_atom(atom_pair[0])
+
+                elif type(atom_pair[0]) == str:
+                    atom_pair[0] = atom_pair.split(":")
+                    res1 = self._protein.get_atom([atom_pair[0][0], int(atom_pair[0][1]), atom_pair[0][2]])
+            
+                else:
+                    logger.error("Invalid specification of displacement atom")
+                    raise ValueError
+                
+                if type(atom_pair[1]) == list:
+                    res2 = self._protein.get_atom(atom_pair[1])
+                
+                elif type(atom_pair[1]) == str:
+                    atom_pair[1] = atom_pair.split(":")
+                    res2 = self._protein.get_atom([atom_pair[1][0], int(atom_pair[1][1]), atom_pair[1][2]])
+
+                else:
+                    logger.error("Invalid specification of displacement atom")
+                    raise ValueError
+
+                self._displacement.append([res1, res2, atom_pair[2]])
 
         self._static = []
         if "Frozen atoms" in self._raw_parameters.keys():
@@ -865,8 +887,18 @@ class setupDMDjob:
 
             for residue in self._raw_parameters["Frozen atoms"]["Residues"]:
                 try:
-                    protein_residue = self._protein.get_residue(residue)
-                    self._static.extend(protein_residue.atoms)
+                    if type(residue) == list:
+                        residue = self._protein.get_atom(residue)
+
+                    elif type(residue) == str:
+                        residue = residue.split(":")
+                        res = self._protein.get_residue([residue[0], int(residue[1])])
+                    
+                    else:
+                        logger.error("Invalid specification of frozen residue")
+                        raise ValueError
+
+                    self._static.extend(res.atoms)
 
                 except ValueError:
                     logger.exception("Could not find the residue!")
@@ -874,7 +906,16 @@ class setupDMDjob:
 
             for atom in self._raw_parameters["Frozen atoms"]["Atoms"]:
                 try:
-                    self._static.append(self._protein.get_atom(atom))
+                    if type(atom) == list:
+                        self._static.append(self._protein.get_atom(atom))
+
+                    elif type(atom) == str:
+                        atom = atom.split(":")
+                        self._static.append(self._protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+
+                    else:
+                        logger.error("Invalid specification of frozen atom")
+                        raise ValueError
 
                 except ValueError:
                     logger.exception("Could not find the atom!")
@@ -884,7 +925,17 @@ class setupDMDjob:
         self._protonate = []
         if "Custom protonation states" in self._raw_parameters.keys():
             for item in self._raw_parameters["Custom protonation states"]:
-                id = [item[0], item[1]]
+                if type(item[1]) == str:
+                    item[0] = item[0].split(":")
+                    item[0] = [item[0][0], int(item[0][1])]
+                
+                elif type(item[1]) == int:
+                    id = [item[0], item[1]]
+                
+                else:
+                    logger.error("Invalid specification of residue in protonation state")
+                    raise ValueError
+
                 self._protonate.append([self._protein.get_residue(id), item[2:]])
 
 
