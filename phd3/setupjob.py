@@ -1154,7 +1154,6 @@ class setupDMDjob:
         new_parameters["Restrict Displacement"].clear()
         for state in self._displacement:
             new_parameters["Restrict Displacement"].append([state[0].label(), state[1].label(), state[2]])
-            print(new_parameters["Restrict Displacement"][-1])
 
         return new_parameters
 
@@ -1179,6 +1178,68 @@ class setupPHDjob:
         protein = utilities.load_pdb(self._parameters["pdb file"])
 
         #Get the qm_chop info to track those residues and atoms as well
+        track_residues = []
+        track_multi = []
+        for res in self._parameters["QM Chop"]["Residues"]:
+            if "-" in res:
+
+                res = res.split("-")
+                res1 = res[0]
+                res2 = res[1]
+
+                res1_back = 'n'
+                if res1[-1].isalpha():
+                    res1_back = res1[-1]
+                    res1 = res1[:-1]
+
+                res1 = res1.split(":")
+                res1 = protein.get_residue([res1[0], int(res1[1])])
+
+                res2_back = 'n'
+                if res2[-1].isalpha():
+                    res2_back = res2[-1]
+                    res2 = res2[:-1]
+                
+                res2 = res2.split(":")
+                res2 = protein.get_residue([res2[0], int(res2[1])])
+
+                track_multi.append([res1, res1_back, res2, res2_back])
+                    
+            else:
+                res = res.split(":")
+                track_residues.append(protein.get_residue([res[0], int(res[1])]))
+
+        track_exclude_atoms = []
+        if "Exclude Atoms" in self._parameters["QM Chop"].keys():
+            for atom in self._parameters["QM Chop"]["Exclude Atoms"]:
+                atom = atom.split(":")
+                track_exclude_atoms.append(protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+
+        track_substrate_chop = []
+        if "Substrate Chop" in self._parameters["QM Chop"].keys():
+            for chop in self._parameters["QM Chop"]["Substrate Chop"]:
+                atom1 = chop.split("-")[0]
+                atom1 = atom1.split(":")
+                atom1 = protein.get_atom([atom1[0], int(atom1[1]), atom1[2]])
+
+                atom2 = chop.split("-")[1]
+                atom2 = atom2.split(":")
+                atom2 - protein.get_atom([atom2[0], int(atom2[1]), atom2[2]])
+
+                track_substrate_chop.append([atom1, atom2])
+
+        track_exclude_side = []
+        if "Exclude Side Chain" in self._parameters["QM Chop"].keys():
+            for res in self._parameters["QM Chop"]["Exclude Side Chain"]:
+                res = res.split(":")
+                track_exclude_side.append(protein.get_residue([res[0], int(res[1])]))
+
+        track_protonation = []
+        if "Protonation" in self._parameters["QM Chop"].keys():
+            for protonation_state in self._parameters["QM Chop"]["Protonation"]:
+                res = protonation_state[0].split(":")
+                res = protein.get_residue([res[0], int(res[1])])
+                track_protonation.append([res] + protonation_state[1:])
 
         if os.path.isdir("dmd_setup"):
             shutil.rmtree("dmd_setup")
@@ -1190,6 +1251,33 @@ class setupPHDjob:
         sdj.full_setup()
         self._parameters["dmd params"] = sdj.updated_parameters()
         sdj.short_dmd(keep_movie=True, time=50)
+
+        #TODO Can change these to just [initializer] or some sort of mapping function
+        self._parameters["QM Chop"]["Residues"].clear()
+        for res in track_residues:
+            self._parameters["QM Chop"]["Residues"].append(res.label())
+    
+        for res in track_multi:
+            tmp = f"{res[0].label()}{res[1]}-{res[2].label()}{res[3]}"
+            self._parameters["QM Chop"]["Residues"].append(tmp)
+
+        self._parameters["QM Chop"]["Exclude Atoms"].clear()
+        for atom in track_exclude_atoms:
+            self._parameters["QM Chop"]["Exclude Atoms"].append(atom.label())
+
+        self._parameters["QM Chop"]["Substrate Chop"].clear()
+        for atoms in track_substrate_chop:
+            self._parameters["QM Chop"]["Substrate Chop"].append(f"{atoms[0].label()}-{atoms[1].label()}")
+
+        self._parameters["QM Chop"]["Exclude Side Chain"].clear()
+        for res in track_exclude_side:
+            self._parametes["QM Chop"]["Exclude Side Chain"].append(res.label())
+
+        self._parameters["QM Chop"]["Protonation"].clear()
+        for res in track_protonation:
+            self._parameters["QM Chop"]["Protonation"].append([res[0].label()] + res[1:])
+
+
 
         utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
         last_protein = utilities.load_movie("movie.pdb")[-1]

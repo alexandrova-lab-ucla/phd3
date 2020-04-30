@@ -62,7 +62,10 @@ class Residue:
                 return True
 
         return False
-    
+   
+    def label(self):
+        return f"{self.chain.name}:{self.number}"
+
     def is_c_terminus(self):
         if self.chain is not None:
             if self is self.chain.residues[-1]:
