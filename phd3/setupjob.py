@@ -1310,10 +1310,10 @@ class setupPHDjob:
         self._parameters["pdb file"] = "start.pdb"
 
         #Write out the phdinput.json
-        with open("phdinput_o.json", "w") as param_file:
+        with open("phdinput.json", "w") as param_file:
             json.dump(self._parameters, param_file, indent=4)
 
         logger.info("Finished setting up job")
         logger.info("Check dmd_setup and qm_setup to ensure proper chop and parameter interpretation")
-        logger.info("Also note that phd will use the _start.pdb instead of the initial pdb provided")
+        logger.info("Also note that phd will use the start.pdb instead of the initial pdb provided")
 
