@@ -854,7 +854,7 @@ class setupDMDjob:
                     res1 = self._protein.get_atom(atom_pair[0])
 
                 elif type(atom_pair[0]) == str:
-                    atom_pair[0] = atom_pair.split(":")
+                    atom_pair[0] = atom_pair[0].split(":")
                     res1 = self._protein.get_atom([atom_pair[0][0], int(atom_pair[0][1]), atom_pair[0][2]])
             
                 else:
@@ -865,7 +865,7 @@ class setupDMDjob:
                     res2 = self._protein.get_atom(atom_pair[1])
                 
                 elif type(atom_pair[1]) == str:
-                    atom_pair[1] = atom_pair.split(":")
+                    atom_pair[1] = atom_pair[1].split(":")
                     res2 = self._protein.get_atom([atom_pair[1][0], int(atom_pair[1][1]), atom_pair[1][2]])
 
                 else:

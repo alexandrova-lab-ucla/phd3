@@ -130,7 +130,10 @@ class iteration:
         os.chdir(self.root_directory)
 
     def timer_went_off(self):
-        if self.controller.time_left() < 1:
+        if self.controller.time_left() == -1:
+            return False
+
+        elif self.controller.time_left() < 1:
             return True
         
         return self.stop

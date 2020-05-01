@@ -504,7 +504,7 @@ def valid_dmd_parameters(parameters: dict):
                 elif type(id[1]) is str:
                     tmp = id[1].split(":")
                     assert(len(tmp) == 3)
-                    assert(type(tmp[0]).isalpha())
+                    assert(tmp[0].isalpha())
                     assert(int(tmp[1]) > 0)
 
                 assert(id[0] != id[1])
