@@ -23,6 +23,9 @@ def main():
     try:
         sdj = setupPHDjob()
 
+    except FileNotFoundError:
+        sys.exit(1)
+
     except OSError:
         logger.exception("OSError encountered, likely an issue with moving files around")
         logger.critical("If the issue persists, contact the developers")

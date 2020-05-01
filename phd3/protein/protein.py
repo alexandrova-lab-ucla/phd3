@@ -209,7 +209,7 @@ class Protein:
         self._logger.error("Could not find the requested chain")
         raise ValueError
 
-    def write_pdb(self, name=None):
+    def write_pdb(self, name=None, exclude_sub_chain=False):
         if name is None:
             name = self.name
 
@@ -222,17 +222,18 @@ class Protein:
                             pdb.write(atom.pdb_line())
                     pdb.write('TER\n')
 
-                if not self.sub_chain.residues:
+                if self.sub_chain.residues:
+                    if not exclude_sub_chain:
+                        for residue in self.sub_chain.residues:
+                            for atom in residue.atoms:
+                                pdb.write(atom.pdb_line())
+                            pdb.write('TER\n')
+
+                else:
                     for residue in self.chains[-1].residues:
                         for atom in residue.atoms:
                             pdb.write(atom.pdb_line())
                     pdb.write('TER\n')
-
-                else:
-                    for residue in self.sub_chain.residues:
-                        for atom in residue.atoms:
-                            pdb.write(atom.pdb_line())
-                        pdb.write('TER\n')
 
                 pdb.write('ENDMDL\n')
 

@@ -1169,7 +1169,14 @@ class setupPHDjob:
         if not os.path.isfile("phdinput.json"):
             logger.error("No phdinput.json file")
             logger.error("Copying over a default file to fill in")
-            sys.exit(0)
+            try:
+                shutil.copy(pkg_resources.resource_filename('phd3.resources', 'phdinput.json'), './')
+
+            except OSError:
+                logger.exception(f"Could not copy default phdinput.json from: {os.path.dirname(os.path.abspath(__file__))} to: {os.getcwd()}")
+                raise
+
+            raise FileNotFoundError("phdinput.json")
 
         with open("phdinput.json") as param_file:
             self._parameters = json.load(param_file)
@@ -1249,8 +1256,11 @@ class setupPHDjob:
 
         sdj = setupDMDjob(pro=protein, parameters = self._parameters["dmd params"])
         sdj.full_setup()
+
         self._parameters["dmd params"] = sdj.updated_parameters()
-        sdj.short_dmd(keep_movie=True, time=50)
+        logger.info(">>>> Running Short DMD >>>>")
+        logger.info("...")
+        sdj.short_dmd(keep_movie=True, time=100)
 
         #TODO Can change these to just [initializer] or some sort of mapping function
         self._parameters["QM Chop"]["Residues"].clear()
@@ -1278,7 +1288,8 @@ class setupPHDjob:
             self._parameters["QM Chop"]["Protonation"].append([res[0].label()] + res[1:])
 
 
-
+        logger.info(">>>> Loading in Movie >>>>")
+        logger.info("...")
         utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
         last_protein = utilities.load_movie("movie.pdb")[-1]
 
@@ -1289,6 +1300,7 @@ class setupPHDjob:
         os.mkdir("qm_setup")
         os.chdir("qm_setup")
 
+        logger.info(">>>> Converting to Coord >>>>")
         dmd_to_qm.protein_to_coord(last_protein, self._parameters["QM Chop"])
         stj = setupTMjob(parameters=self._parameters["qm params"])
 

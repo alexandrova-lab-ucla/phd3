@@ -29,7 +29,8 @@ def addH(protein):
     phd_config = utilities.load_phd_config()
     chimera_path = phd_config["PATHS"]["chimera"]
     
-    protein.write_pdb("_temp.pdb")
+    protein.reformat_protein()
+    protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 
     with open("chimeraaddh.com", "w") as comfile:
         comfile.write("open _temp.pdb\n")
@@ -53,6 +54,8 @@ def addH(protein):
 #    os.remove("_temp.pdb")
 
     pro = utilities.load_pdb("addh.pdb")
+    #Put back in the substrate stuff
+    pro.chains.append(protein.sub_chain)
 
     pro.reformat_protein()
     logger.debug("Removing addh.pdb")

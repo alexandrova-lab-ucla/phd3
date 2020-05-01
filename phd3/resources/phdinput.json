@@ -1,35 +1,101 @@
 {
-    "pdb file": "start.pdb",
+    "pdb file": "Azurin_start.pdb",
+    "Resubmit" : true,
     "DMD CONVERGE": true,
-    "MAX DMD STEPS": 10,
+    "MAX DMD STEPS": 40,
     "QM Chop":{
-        "Residues": [],
+        "Residues": ["A:45N-A:47", "A:112N-A:114", "A:117", "A:121"],
+        "Protonation": [ ["A:112", "deprotonate"],
+                        ["A:117", "deprotonate"],
+                        ["A:117", "protonate"],
+                        ["A:46", "deprotonate"],
+                        ["A:46", "protonate"]
+        ],
+        "Exclude Side Chain": [],
         "Exclude Atoms": [],
-        "Substrate Cut": [],
-        "Exclude Sidechain": []
+        "Substrate Chop": []
     },
-   
-    "Protonation" : [],
+    "Max Iterations": 8,
 
-    "Disulfide Bridge": [],
+    "Cluster Energy": true,
+    "Cluster Centroid": true,
+    "Max Clusters": 3,
 
-    "Resubmit": true,
+    "Equilibrate":{
+        "Equilibrate On": true,
+        "Initial Temperature": 0.2,
+        "Time": 2500
+    },
 
+    "dmd params":{
+        "Thermostat": "ANDERSON",
+        "Initial Temperature": 0.1,
+        "Final Temperature": 0.1,
+        "HEAT_X_C": 0.1,
+        "Echo File": "echo",
+        "Movie File": "movie",
+        "Restart File": "dmd_restart",
+        "dt": 10,
+        "Time": 10000,
+        "titr": {
+            "titr on": false,
+            "dt" : 50,
+            "pH": 3.0,
+            "Buried Cutoff": 0.75,
+            "Partner Distance": 3.5
+        },
+        "Freeze Non-Residues": true,
+        "Restrict Metal Ligands": true,
+        "Custom protonation states": [
+            ["A", 117, "deprotonate"],
+            ["A", 117, "protonate"],
+            ["A", 46, "protonate"],
+            ["A", 46, "deprotonate"],
+            ["A", 35, "deprotonate"],
+            ["A", 83, "deprotonate"]
+        ],
+        "Frozen atoms": {
+            "Chains": [],
+            "Residues": [],
+            "Atoms": []
+        },
+        "Restrict Displacement": [
+            [["A", 3, "SG"], ["A", 26, "SG"], 0.2]
+        ],
+        "Commands": {},
+        "Remaining Commands": {}
+    },
     "qm params": {
-        "basis" : {
-            "all" : "def2-SVP"
+        "geometry" : {
+            "cartesians" : true,
+            "idef" : {
+                "idef_on" : false,
+                "freeze_stretch" : [
+                ]
+            },
+            "ired" : false,
+            "iaut" : {
+                "iaut_on" : false,
+                "bonds" : [
+                ]
+            }
         },
 
-        "charge" : -1,
+        "basis" : {
+            "all" : "def2-SVP",
+            "cu" : "def2-TZVPP"
+        },
+
+        "charge" : 0,
 
         "open_shell" : {
-            "open_shell_on" : false,
-            "unpaired" : 1
+            "open_shell_on" : true,
+            "unpaired" : 0
         },
 
         "dft" : {
             "dft_on" : true,
-            "func" : "tpss",
+            "func" : "b3-lyp",
             "grid" : "m4"
         },
 
@@ -42,48 +108,17 @@
         },
 
         "scf" : {
-            "iter" : 300,
+            "iter" : 3000,
             "conv" : 6
         },
 
-        "cosmo" : null,
+        "cosmo" : 20,
 
+        "freeze_atoms" : [],
         "calculation" : "geo",
         "geo_iterations" : 200,
         "weight" : false,
         "gcart" : null,
         "denconv" : null
-    },
-
-    "dmd params": {
-        "Thermostat" : "ANDERSON",
-        "Initial Temperature" : 0.1,
-        "Final Temperature" : 0.1,
-        "HEAT_X_C" : 0.1,
-        "Echo File" : "echo",
-        "Movie File" : "movie",
-        "Restart File" : "dmd_restart",
-        "dt" : 10,
-        "Time" : 1000,
-
-        "titr" : {
-            "titr on" : false
-        },
-
-        "Freeze Non-Residues": true,
-        "Restrict Metal Ligands": true,
-
-        "Frozen atoms" : {
-            "Chains": ["Chain1", "Chain2"],
-            "Residues": [["Chain", ResNum] , ["Chain", ResNum] ],
-            "Atoms" : [
-                ["Chain", ResNum, "ID"],
-                ["Chain", ResNum, "ID"],
-                ["Chain", ResNum, "ID"]
-            ]
-        },
-        "Restrict Displacement" : [
-            [["Chain", ResNum, "ID"], ["Chain", ResNum, "ID"], 0.2]
-        ]
     }
 }
