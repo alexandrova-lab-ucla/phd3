@@ -13,7 +13,8 @@
         ],
         "Exclude Side Chain": [],
         "Exclude Atoms": [],
-        "Substrate Chop": []
+        "Substrate Chop": [],
+        "Freeze Atoms": []
     },
     "Max Iterations": 8,
 

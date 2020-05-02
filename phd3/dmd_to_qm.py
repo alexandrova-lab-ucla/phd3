@@ -400,6 +400,14 @@ def protein_to_coord(protein, chop_params):
                 atoms.append(pro.atom.Atom(element = "H", coords = atom_to_protonate.coords + direction, id='HY'))
                 res.add_atom(atoms[-1])
 
+    if "Freeze Atoms" in chop_params.keys():
+        for a in chop_params["Freeze Atoms"]:
+            a = a.split(":")
+            chain = a[0]
+            res_num = int(a[1])
+            atom_id = a[2]
+            pro.get_atom([chain, res_num, atom_id]).freeze = True
+
 
     #Make sure that the chops are not connected to each other
     for chop in chop_atoms:

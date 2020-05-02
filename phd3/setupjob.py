@@ -1248,6 +1248,15 @@ class setupPHDjob:
                 res = protein.get_residue([res[0], int(res[1])])
                 track_protonation.append([res] + protonation_state[1:])
 
+        track_freeze = []
+        if "Freeze Atoms" in self._parameters["QM Chop"].keys():
+            for atom in self._parameters["QM Chop"]["Freeze Atoms"]:
+                atom = atom.split(":")
+                chain = atom[0]
+                res_num = int(atom[1])
+                atom_id = atom[2]
+                track_freeze.append(protein.get_atom([chain, res_num, atom_id]))
+
         if os.path.isdir("dmd_setup"):
             shutil.rmtree("dmd_setup")
 
@@ -1286,6 +1295,10 @@ class setupPHDjob:
         self._parameters["QM Chop"]["Protonation"].clear()
         for res in track_protonation:
             self._parameters["QM Chop"]["Protonation"].append([res[0].label()] + res[1:])
+
+        self._parameters["QM Chop"]["Freeze Atoms"].clear()
+        for atom in track_freeze:
+            self._parameters["QM Chop"]["Freeze Atoms"].append(atom.label())
 
 
         logger.info(">>>> Loading in Movie >>>>")
