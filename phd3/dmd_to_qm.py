@@ -406,7 +406,7 @@ def protein_to_coord(protein, chop_params):
             chain = a[0]
             res_num = int(a[1])
             atom_id = a[2]
-            pro.get_atom([chain, res_num, atom_id]).freeze = True
+            protein.get_atom([chain, res_num, atom_id]).freeze = True
 
 
     #Make sure that the chops are not connected to each other
