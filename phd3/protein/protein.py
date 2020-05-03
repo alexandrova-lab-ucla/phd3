@@ -41,6 +41,7 @@ class Protein:
     def reformat_protein(self, relabel_protein=True):
         # This is the BIG BIG BIG function that fixes EVERYTHING of a pdb for DMD
         # Don't question why it does things, it needs to
+        
         res_renum = 1
         chain_let = 'A'
 
