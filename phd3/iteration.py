@@ -756,6 +756,7 @@ class iteration:
         logger.info(f"[DMD Energy] ==>> {self.sp_PDB_structures[winning_index][1]:.5f} kcal/mol")
 
         self.pdb_winner = self.sp_PDB_structures[winning_index]
+        self.pdb_winner[0].reformat_protein()
         self.pdb_winner[0].write_pdb("dmdWinner.pdb")
 
         logger.info("")
@@ -788,13 +789,11 @@ class iteration:
        
         if os.path.isdir("trun_backup"):
             logger.debug("Overriding directory with trun_backup")
-            for f in [f for f in os.listdir("./") if os.path.isfile(f)]:
-                os.remove(f)
-
             for f in [f for f in os.listdir("./trun_backup")]:
                 f = os.path.join("./trun_backup", f)
                 if os.path.isfile(f):
-                    shutil.copy(f, "./")
+                    if "coord" in f or "energy" in f or "gradient" in f:
+                        shutil.copy(f, "./")
 
             shutil.rmtree("trun_backup")
 

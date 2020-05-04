@@ -55,6 +55,8 @@ def addH(protein):
 
     pro = utilities.load_pdb("addh.pdb")
     #Put back in the substrate stuff
+
+    #THIS IS CAUSING ISSUES WITH THE INITAL PROTEIN FOR SOME REASON
     pro.chains.append(protein.sub_chain)
 
     pro.reformat_protein()
@@ -78,12 +80,19 @@ def addH(protein):
 
     return pro
 
-def protein_to_coord(protein, chop_params):
+def protein_to_coord(initial_protein, chop_params):
 
     logger.debug("Protonating the protein")
-    
+
+    #Easiest way to create a copy of the protein I have right now:
+    initial_protein.write_pdb("_to_copy.pdb")
+    protein = utilities.load_pdb("_to_copy.pdb")
+    #os.remove("_to_copy.pdb")
+
     #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
     protein = addH(protein)
+
+    initial_protein.write_pdb("Final_Inital_pdb.pdb")
 
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []
