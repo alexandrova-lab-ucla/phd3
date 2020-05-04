@@ -1269,7 +1269,7 @@ class setupPHDjob:
         self._parameters["dmd params"] = sdj.updated_parameters()
         logger.info(">>>> Running Short DMD >>>>")
         logger.info("...")
-        sdj.short_dmd(keep_movie=True, time=150)
+        sdj.short_dmd(keep_movie=True, time=50)
 
         #TODO Can change these to just [initializer] or some sort of mapping function
         self._parameters["QM Chop"]["Residues"].clear()
