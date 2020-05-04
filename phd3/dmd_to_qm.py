@@ -30,6 +30,7 @@ def addH(protein):
     chimera_path = phd_config["PATHS"]["chimera"]
     
     protein.reformat_protein()
+    protein.fix_h()
     protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 
     with open("chimeraaddh.com", "w") as comfile:
@@ -53,19 +54,20 @@ def addH(protein):
     logger.debug("Removing _temp.pdb")
 #    os.remove("_temp.pdb")
 
-    pro = utilities.load_pdb("addh.pdb")
+    new_protein = utilities.load_pdb("addh.pdb")
     #Put back in the substrate stuff
 
     #THIS IS CAUSING ISSUES WITH THE INITAL PROTEIN FOR SOME REASON
-    pro.chains.append(protein.sub_chain)
+    #Works now, need to implement copy functions for deep copy
+    new_protein.chains.append(protein.sub_chain)
 
-    pro.reformat_protein()
+    new_protein.reformat_protein()
     logger.debug("Removing addh.pdb")
 #    os.remove("addh.pdb")
 
     #Remove all epsilon hydrogens on the histidines
     #TODO May have to check if the delta hydrogren is there
-    for chain in pro.chains:
+    for chain in new_protein.chains:
         for res in chain.residues:
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
@@ -76,24 +78,39 @@ def addH(protein):
                         res.atoms.remove(atom)
                         del atom
                         break
+                #Now we add a proton to the ND1 atom
+                delta_nitrogen = res.get_atom("ND1")
+                vectors = []
+                for a in delta_nitrogen.bonds:
+                    vectors.append(a.coords - delta_nitrogen.coords)
+                    vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
+
+                #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
+                direction = -1.1* sum(vectors)
+
+                #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
+                new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1")
+                delta_nitrogen.bonds.append(new_proton)
+                new_proton.bonds.append(delta_nitrogen)
+                res.add_atom(new_proton)
                 
 
-    return pro
+
+    return new_protein
 
 def protein_to_coord(initial_protein, chop_params):
 
     logger.debug("Protonating the protein")
 
     #Easiest way to create a copy of the protein I have right now:
+    #TODO actually implement copy functions in the protein library
     initial_protein.write_pdb("_to_copy.pdb")
     protein = utilities.load_pdb("_to_copy.pdb")
-    #os.remove("_to_copy.pdb")
+    os.remove("_to_copy.pdb")
 
-    #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
     protein = addH(protein)
-
-    initial_protein.write_pdb("Final_Inital_pdb.pdb")
-
+    #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
+    
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []
 
@@ -448,7 +465,7 @@ def protein_to_coord(initial_protein, chop_params):
             lb.write(a.label() + '\n')
 
 
-def coord_to_protein(protein):
+def coord_to_protein(initial_protein):
     #Will update coords from the coord file in the protein passed
     #Needs to have a label and a coord file present in directory
     if not os.path.isfile("coord"):
@@ -459,7 +476,7 @@ def coord_to_protein(protein):
         logger.error("No label file found")
         raise FileNotFoundError("label")
 
-    protein = addH(protein)
+    protein = addH(initial_protein)
 
     coord_lines = []
     labels = []

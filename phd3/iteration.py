@@ -133,7 +133,7 @@ class iteration:
         if self.controller.time_left() == -1:
             return False
 
-        elif self.controller.time_left() < 1:
+        elif self.controller.time_left() < 0.75:
             return True
         
         return self.stop
@@ -921,7 +921,8 @@ class iteration:
             self.to_next_iteration.write_pdb("to_next_iteration.pdb")
         
         self.next_step = self.finish_iteration
-      
+
+
         logger.info("")
         logger.info("===================[Finished QM OPT]===================")
 

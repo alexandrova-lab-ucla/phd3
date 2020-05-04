@@ -25,7 +25,8 @@ __all__=[
     'H_TO_KCAL',
     'MO_FILES',
     'PROTONATED_STANDARD',
-    'DEPROTONATED_STANDARD'
+    'DEPROTONATED_STANDARD',
+    'PROTON_DISTANCE'
 ]
 
 MO_FILES = ['mos', 'alpha', 'beta']
@@ -73,6 +74,14 @@ DEPROTONATED_STANDARD = {
     "ARG" : [("NH1", "HH21"), ("NH1", "HH11"), ("NH2", "HH22"), ("NH2", "HH12"), ("NE", "HE")],
     "LYS" : [("NZ", "HZ1"), ("NZ", "HZ2"), ("NZ", "HZ3")]
 }
+
+#From Chimera's addh
+PROTON_DISTANCE = {
+        "N" : 1.01,
+        "C" : 1.8,
+        "O" : 0.96,
+        "S" : 1.33
+        }
 
 HEAVY_ATOMS = ['n', 'o', 's', 'se']
 

@@ -42,6 +42,9 @@ class Protein:
         # This is the BIG BIG BIG function that fixes EVERYTHING of a pdb for DMD
         # Don't question why it does things, it needs to
         
+        self.non_residues.clear()
+        self.metals.clear()
+
         res_renum = 1
         chain_let = 'A'
 
@@ -503,6 +506,51 @@ class Protein:
 
         return np.sqrt((diff*diff).sum()/ len(this_coords))
 
+    def fix_h(self):
+        for chain in self.chains[:-1]:
+            for res in chain.residues:
+                remove_atoms = []
+                for a in res.atoms:
+                    if True:
+                        if a.element.lower() == "h":
+                            remove_atoms.append(a)                    
+                            for b in a.bonds:
+                                b.bonds.remove(a)
+
+                    else:
+                        for b in a.bonds:
+                            if b.element.lower() == "h":
+                                dis = np.linalg.norm(a.coords-b.coords)
+                                if dis > constants.PROTON_DISTANCE[a.element.upper()]:
+                                    direction = b.coords - a.coords
+                                    direction = direction / np.linalg.norm(direction)
+                                    direction = constants.PROTON_DISTANCE[a.element.upper()] * direction
+                                    b.coords = a.coords + direction
+                
+                for a in remove_atoms:
+                    res.atoms.remove(a)
+
+        if not self.sub_chain.residues:
+            for res in self.chains[-1]:
+                remove_atoms= []
+                for a in res.atoms:
+                    if True:
+                        if a.element.lower() == "h":
+                            remove_atoms.append(a)
+                            for b in a.bonds:
+                                b.bonds.remove(a)
+                    
+                    else:
+                        for b in a.bonds:
+                            if element.lower() == "h":
+                                dis = np.linalg.norm(a.coords - b.coords)
+                                if dis > constants.PROTON_DISTANCE[a.element.upper()]:
+                                    direction = b.coords - a.coords
+                                    direction = direction / np.linalg.norm(direction)
+                                    direction = constants.PROTON_DISTANCE[a.element.upper()] * direction
+                                    b.coords = a.coords + direction
+                for a in remove_atoms:
+                    res.atoms.remove(a)
 
 
-
+        
