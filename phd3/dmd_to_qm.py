@@ -72,27 +72,37 @@ def addH(protein):
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
                 for atom in epsilon_nitrogen.bonds:
-                    if atom.id == "2HNE" or atom.id == "HHNE":
+                    if atom.element.lower() == "h":
                         #DELETE THIS ATOM, no good two-timer
                         epsilon_nitrogen.bonds.remove(atom)
                         res.atoms.remove(atom)
                         del atom
-                        break
+                
                 #Now we add a proton to the ND1 atom
                 delta_nitrogen = res.get_atom("ND1")
-                vectors = []
+                skip = False
+                for a in res.atoms:
+                    if a.id.lower() == "hd1":
+                        skip = True
+
                 for a in delta_nitrogen.bonds:
-                    vectors.append(a.coords - delta_nitrogen.coords)
-                    vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
+                    if a.element.lower() == "h":
+                        skip = True
 
-                #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-                direction = -1.1* sum(vectors)
+                if not skip:
+                    vectors = []
+                    for a in delta_nitrogen.bonds:
+                        vectors.append(a.coords - delta_nitrogen.coords)
+                        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
 
-                #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1")
-                delta_nitrogen.bonds.append(new_proton)
-                new_proton.bonds.append(delta_nitrogen)
-                res.add_atom(new_proton)
+                    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
+                    direction = -1.1* sum(vectors)
+
+                    #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
+                    new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1")
+                    delta_nitrogen.bonds.append(new_proton)
+                    new_proton.bonds.append(delta_nitrogen)
+                    res.add_atom(new_proton)
                 
 
 

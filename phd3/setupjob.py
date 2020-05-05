@@ -95,6 +95,7 @@ class setupTMjob:
         "YOU DID NOT DEFINE A COMPLETE SET OF INTERNAL": (8, "iaut error"),
         "THE B*m*Bt-MATRIX IS SINGULAR !": (8, "iaut error"),
         "CARTESIAN COORDINATES AND VALUES OF INTERNAL COORDINATES DO  N O T   AGREE !": (3, "coord file has internals"),
+        "!!! CHOSEN OCCUPATION IMPOSSIBLE !!!": (26, "Impossible Occupation"),
         _timeout_err: (1, _timeout_err)
     }
     _runFile = "tcommands.sh"  # name of file with the turbomole commands
