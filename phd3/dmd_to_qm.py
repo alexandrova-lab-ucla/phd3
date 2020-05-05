@@ -30,7 +30,7 @@ def addH(protein):
     chimera_path = phd_config["PATHS"]["chimera"]
     
     protein.reformat_protein()
-    protein.fix_h()
+    protein.remove_h()
     protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 
     with open("chimeraaddh.com", "w") as comfile:
