@@ -99,12 +99,12 @@ def addH(protein):
                     direction = -1.1* sum(vectors)
 
                     #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                    new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1")
+                    new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1", number=20)
                     delta_nitrogen.bonds.append(new_proton)
                     new_proton.bonds.append(delta_nitrogen)
                     res.add_atom(new_proton)
                 
-
+    new_protein.reformat_protein()
 
     return new_protein
 

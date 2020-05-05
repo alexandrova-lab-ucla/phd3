@@ -865,6 +865,7 @@ class iteration:
             start = timer()
             geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params, time=self.controller.time_left(), run_dir=self.scratch)
             end = timer()
+            logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
             #Get information on if the timer went off
             self.stop = geo._timer_went_off
             
@@ -907,7 +908,6 @@ class iteration:
             self.qm_final_energy = qm_calculation.TMcalculation.get_energy()
             logger.info("")
             logger.info(f"[Final QM Energy] ==>> {self.qm_final_energy}")
-            logger.info(f"Time elapsed during QM Opt calculation: {datetime.timedelta(seconds = int(end -start))}")
         
         #Now we reinstall the coords into the protein!
         self.to_next_iteration = dmd_to_qm.coord_to_protein(self.pdb_winner[0])
