@@ -25,6 +25,24 @@ _all__ = [
         'coord_to_protein'
         ]
 
+def add_proton(atom, ID="HY"):
+    vectors = []
+    for a in atom.bonds:
+        vectors.append(a.coords - atom.coords)
+        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
+
+    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
+    direction = -1.1* sum(vectors)
+
+    new_proton = pro.atom.Atom(element = "H", coords = atom.coords + direction, id=ID, number=20)
+    
+    #Update the bond lists etc...
+    atom.add_bond(new_proton)
+    atom.residue.add_atom(new_proton)
+    
+    return new_proton
+
+
 def addH(protein):
     phd_config = utilities.load_phd_config()
     chimera_path = phd_config["PATHS"]["chimera"]
@@ -55,10 +73,6 @@ def addH(protein):
 #    os.remove("_temp.pdb")
 
     new_protein = utilities.load_pdb("addh.pdb")
-    #Put back in the substrate stuff
-
-    #THIS IS CAUSING ISSUES WITH THE INITAL PROTEIN FOR SOME REASON
-    #Works now, need to implement copy functions for deep copy
     new_protein.chains.append(protein.sub_chain)
 
     new_protein.reformat_protein()
@@ -66,7 +80,6 @@ def addH(protein):
 #    os.remove("addh.pdb")
 
     #Remove all epsilon hydrogens on the histidines
-    #TODO May have to check if the delta hydrogren is there
     for chain in new_protein.chains:
         for res in chain.residues:
             if res.name.upper() == "HIS":
@@ -90,20 +103,9 @@ def addH(protein):
                         skip = True
 
                 if not skip:
-                    vectors = []
-                    for a in delta_nitrogen.bonds:
-                        vectors.append(a.coords - delta_nitrogen.coords)
-                        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
-
-                    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-                    direction = -1.1* sum(vectors)
-
-                    #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                    new_proton = pro.atom.Atom(element = "H", coords = delta_nitrogen.coords + direction, id="HD1", number=20)
-                    delta_nitrogen.bonds.append(new_proton)
-                    new_proton.bonds.append(delta_nitrogen)
-                    res.add_atom(new_proton)
-                
+                    add_proton(delta_nitrogen, ID="HD1")
+               
+    #For any added protons (fix the labeling and numbering)
     new_protein.reformat_protein()
 
     return new_protein
@@ -119,8 +121,7 @@ def protein_to_coord(initial_protein, chop_params):
     os.remove("_to_copy.pdb")
 
     protein = addH(protein)
-    #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
-    
+
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []
 
@@ -202,6 +203,7 @@ def protein_to_coord(initial_protein, chop_params):
     #[a1 -> freeze, a2->change to hydrogen and freeze]
     chop_atoms = []
 
+    #For something like O2, can just place the hydrogens in the "Exclude Atoms" for the QM region...
     if "Exclude Atoms" in chop_params.keys():
         for exclude in chop_params["Exclude Atoms"]:
             exclude = exclude.split(":")
@@ -224,7 +226,6 @@ def protein_to_coord(initial_protein, chop_params):
 
 
     if "Substrate Chop" in chop_params.keys():
-        
         atoms_to_remove = []
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
         for chop in chop_params["Substrate Chop"]:
@@ -423,18 +424,9 @@ def protein_to_coord(initial_protein, chop_params):
             if state[0] == "protonate":
                 #Need to actually compute some angles and place in an atom...
                 atom_to_protonate = res.get_atom(heavy_atom)
-                
-                vectors = []
-                for  a in atom_to_protonate.bonds:
-                    vectors.append(a.coords - atom_to_protonate.coords)
-                    vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
-
-                #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-                direction = -1.1* sum(vectors)
-
-                #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                atoms.append(pro.atom.Atom(element = "H", coords = atom_to_protonate.coords + direction, id='HY'))
-                res.add_atom(atoms[-1])
+               
+                proton = add_proton(atom_to_protonate)
+                atoms.append(proton)
 
     if "Freeze Atoms" in chop_params.keys():
         for a in chop_params["Freeze Atoms"]:

@@ -4,6 +4,8 @@ Author  ==>> Matthew R. Hennefarth
 Date    ==>> April 16, 2020
 """
 
+import copy
+
 #PHD3 Imports
 from ..utility import constants
 
@@ -73,5 +75,27 @@ class Residue:
 
         return False
 
+    def set_chain(self, chain):
+        self.chain = chain
+        for atom in self.atoms:
+            atom.chain = chain
+
     def __str__(self):
         return f"{self.name} {self.number}"
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        result.name = copy.deepcopy(self.name, memo)
+        result.number = copy.deepcopy(self.number, memo)
+        result.chain = self.chain
+        for atom in self.atoms:
+            copy_atom = copy.deepcopy(atom)
+            result.add_atom(copy_atom)
+
+        result.inConstr_number = copy.deepcopy(self.inConstr_number, memo)
+        return result
+
+
