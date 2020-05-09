@@ -211,6 +211,25 @@ class titrate_protein:
                     if len(change) != 4:
                         logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid}")
 
+                #given a histidine, we assume that only one nitrogen is ever protonated...so if we are changing
+                #its protonation state, we have to make sure we apply the opposite
+                if residue.amino_acid.upper() == "HIS":
+                    add_change = []
+                    #if deprotonating the ND1, we protonate the NE2 by defaults
+                    if not protonate and residue.change_heteroatom[0] == "ND1":
+                        # We need to protonate the other side
+                        add_change = change[:-2]
+                        add_change.append("protonate")
+
+                    #if protonating NE2, we deprotonate ND1 as well.
+                    elif protonate and residue.change_heteroatom[0] == "NE2":
+                        # We want to deprotonate the delta nitrogen then
+                        add_change = change[:-2]
+                        add_change.append("deprotonate")
+                        
+                    if add_change:
+                        self._updated_protonation.append(add_change)
+
                 self._updated_protonation.append(change)
 
         #Assign protonations to self._updated_protonation

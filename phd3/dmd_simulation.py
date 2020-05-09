@@ -16,6 +16,7 @@ import math
 from timeit import default_timer as timer
 import datetime
 from subprocess import Popen, PIPE
+import numpy as np
 
 #PHD3 Imports
 import phd3.protein as protein
@@ -362,66 +363,29 @@ class dmd_simulation:
     def get_average_potential_energy(echo_file):
         energies = dmd_simulation.get_echo_data(echo_file)
 
-        energies = [float(line[4]) for line in energies]
-        ave = sum(energies)/len(energies)
-
-        stdev = 0
-        for e in energies:
-            stdev += (e - ave)**2
-
-        stdev /= (len(energies)-1)
-        stdev = math.sqrt(stdev)
-
-        return [ave, stdev] 
+        energies = np.array([float(line[4]) for line in energies])
+        return [np.average(energies), np.std(energies)]
 
     @staticmethod
     def get_average_kinetic_energy(echo_file):
         energies = dmd_simulation.get_echo_data(echo_file)
 
-        energies = [float(line[5]) for line in energies]
-        ave = sum(energies)/len(energies)
-
-        stdev = 0
-        for e in energies:
-            stdev += (e - ave)**2
-
-        stdev /= (len(energies)-1)
-        stdev = math.sqrt(stdev)
-
-        return [ave, stdev] 
-
+        energies = np.array([float(line[5]) for line in energies])
+        return [np.average(energies), np.std(energies)]
 
     @staticmethod
     def get_average_temp_energy(echo_file):
         energies = dmd_simulation.get_echo_data(echo_file)
 
-        energies = [float(line[1]) for line in energies]
-        ave = sum(energies)/len(energies)
-
-        stdev = 0
-        for e in energies:
-            stdev += (e - ave)**2
-
-        stdev /= (len(energies)-1)
-        stdev = math.sqrt(stdev)
-
-        return [ave, stdev] 
+        energies = np.array([float(line[1]) for line in energies])
+        return [np.average(energies), np.std(energies)]
 
     @staticmethod
     def get_average_pressure_energy(echo_file):
         energies = dmd_simulation.get_echo_data(echo_file)
 
-        energies = [float(line[2]) for line in energies]
-        ave = sum(energies)/len(energies)
-
-        stdev = 0
-        for e in energies:
-            stdev += (e - ave)**2
-
-        stdev /= (len(energies)-1)
-        stdev = math.sqrt(stdev)
-
-        return [ave, stdev] 
+        energies = np.array([float(line[2]) for line in energies])
+        return [np.average(energies), np.std(energies)]
 
     def print_summary(self, sim_time, wall_time):
         pot_energy = self.get_average_potential_energy(self._raw_parameters['Echo File'])

@@ -28,7 +28,7 @@ _all__ = [
 def addH(protein):
     phd_config = utilities.load_phd_config()
     chimera_path = phd_config["PATHS"]["chimera"]
-    
+
     protein.reformat_protein()
     protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 

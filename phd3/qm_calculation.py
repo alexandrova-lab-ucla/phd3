@@ -196,7 +196,8 @@ class TMcalculation:
             "singlepoint": self._singlepoint,
             "sp" : self._singlepoint,
             "trans": self._trans,
-            "escf": self._escf
+            "escf": self._escf,
+            "woelfling" : self._woelfling
         }
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
@@ -247,6 +248,11 @@ class TMcalculation:
         if self._resub:
             logger.info("Resubmitting the job!")
             submitturbomole.main(_cores=self._cores, _time=self._time_to_run)
+
+    def _woelfling(self):
+        logger.debug("Woelfling transition state")
+        self._run("woelfling-job > woelfling.out")
+
 
     def _forceopt(self):
         """ Executes the commands (jobex) to perform a geometry optimization. Will resubmit if not done.
