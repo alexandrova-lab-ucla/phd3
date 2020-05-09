@@ -119,7 +119,7 @@ class controller:
             return -1
 
         now = timer()
-        time_elapsed = int(now-self._start)/3600
+        time_elapsed = int(now-self._start)/3600.0
         if self._time < time_elapsed:
             return 0
 

@@ -42,6 +42,9 @@ class Protein:
         # This is the BIG BIG BIG function that fixes EVERYTHING of a pdb for DMD
         # Don't question why it does things, it needs to
         
+        self.non_residues.clear()
+        self.metals.clear()
+
         res_renum = 1
         chain_let = 'A'
 
@@ -503,6 +506,30 @@ class Protein:
 
         return np.sqrt((diff*diff).sum()/ len(this_coords))
 
+    def remove_h(self):
+        for chain in self.chains[:-1]:
+            for res in chain.residues:
+                remove_atoms = []
+                for a in res.atoms:
+                    if a.element.lower() == "h":
+                        remove_atoms.append(a)                    
+                        for b in a.bonds:
+                            b.bonds.remove(a)
+
+                for a in remove_atoms:
+                    res.atoms.remove(a)
+
+        if not self.sub_chain.residues:
+            for res in self.chains[-1]:
+                remove_atoms= []
+                for a in res.atoms:
+                    if a.element.lower() == "h":
+                        remove_atoms.append(a)
+                        for b in a.bonds:
+                            b.bonds.remove(a)
+                    
+                for a in remove_atoms:
+                    res.atoms.remove(a)
 
 
-
+        

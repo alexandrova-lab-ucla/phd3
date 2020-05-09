@@ -6,6 +6,7 @@ Date    ==>> April 16, 2020
 
 #Standard Library Imports
 import numpy as np
+import copy
 
 #PHD3 Imports
 import phd3.utility.constants as constants
@@ -73,9 +74,6 @@ class Atom:
             self.number, self.id if len(self.id) > 3 else f" {self.id}", self.residue.name, self.residue.chain.name, self.residue.number,
             self.coords[0], self.coords[1], self.coords[2], self.element.capitalize())
 
-    def __str__(self):
-        return f"{self.id} {self.coords} {self.element}"
-
     def label(self):
         return f"{self.chain.name}:{self.residue.number}:{self.id}"
 
@@ -91,3 +89,23 @@ class Atom:
     def add_bond(self, atom):
         self.bonds.append(atom)
         atom.bonds.append(self)
+    
+    def __str__(self):
+        return f"{self.id} {self.coords} {self.element}"
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+
+        result.element = copy.deepcopy(self.element, memo)
+        result.coords = copy.deepcopy(self.coords, memo)
+        result.id = copy.deepcopy(self.id, memo)
+        result.number = copy.deepcopy(self.number, memo)
+        result.bonds = copy.copy(bonds)
+        result.freeze = copy.deepcopy(self.freeze, memo)
+        result.residue = self.residue
+        result.chain = self.chain
+
+        return result
+

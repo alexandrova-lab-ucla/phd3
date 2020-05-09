@@ -25,11 +25,30 @@ _all__ = [
         'coord_to_protein'
         ]
 
+def add_proton(atom, ID="HY"):
+    vectors = []
+    for a in atom.bonds:
+        vectors.append(a.coords - atom.coords)
+        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
+
+    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
+    direction = -1.1* sum(vectors)
+
+    new_proton = pro.atom.Atom(element = "H", coords = atom.coords + direction, id=ID, number=20)
+    
+    #Update the bond lists etc...
+    atom.add_bond(new_proton)
+    atom.residue.add_atom(new_proton)
+    
+    return new_proton
+
+
 def addH(protein):
     phd_config = utilities.load_phd_config()
     chimera_path = phd_config["PATHS"]["chimera"]
 
     protein.reformat_protein()
+    protein.remove_h()
     protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 
     with open("chimeraaddh.com", "w") as comfile:
@@ -53,36 +72,54 @@ def addH(protein):
     logger.debug("Removing _temp.pdb")
 #    os.remove("_temp.pdb")
 
-    pro = utilities.load_pdb("addh.pdb")
-    #Put back in the substrate stuff
-    pro.chains.append(protein.sub_chain)
+    new_protein = utilities.load_pdb("addh.pdb")
+    new_protein.chains.append(protein.sub_chain)
 
-    pro.reformat_protein()
+    new_protein.reformat_protein()
     logger.debug("Removing addh.pdb")
 #    os.remove("addh.pdb")
 
     #Remove all epsilon hydrogens on the histidines
-    #TODO May have to check if the delta hydrogren is there
-    for chain in pro.chains:
+    for chain in new_protein.chains:
         for res in chain.residues:
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
                 for atom in epsilon_nitrogen.bonds:
-                    if atom.id == "2HNE" or atom.id == "HHNE":
+                    if atom.element.lower() == "h":
                         #DELETE THIS ATOM, no good two-timer
                         epsilon_nitrogen.bonds.remove(atom)
                         res.atoms.remove(atom)
                         del atom
-                        break
                 
+                #Now we add a proton to the ND1 atom
+                delta_nitrogen = res.get_atom("ND1")
+                skip = False
+                for a in res.atoms:
+                    if a.id.lower() == "hd1":
+                        skip = True
 
-    return pro
+                for a in delta_nitrogen.bonds:
+                    if a.element.lower() == "h":
+                        skip = True
 
-def protein_to_coord(protein, chop_params):
+                if not skip:
+                    add_proton(delta_nitrogen, ID="HD1")
+               
+    #For any added protons (fix the labeling and numbering)
+    new_protein.reformat_protein()
+
+    return new_protein
+
+def protein_to_coord(initial_protein, chop_params):
 
     logger.debug("Protonating the protein")
-    
-    #TODO can instead check substrates and exclude, except if we need to add a hydrogen for waters...
+
+    #Easiest way to create a copy of the protein I have right now:
+    #TODO actually implement copy functions in the protein library
+    initial_protein.write_pdb("_to_copy.pdb")
+    protein = utilities.load_pdb("_to_copy.pdb")
+    os.remove("_to_copy.pdb")
+
     protein = addH(protein)
 
     #We fill with all possible atoms, and then remove what is not in the QM
@@ -166,6 +203,7 @@ def protein_to_coord(protein, chop_params):
     #[a1 -> freeze, a2->change to hydrogen and freeze]
     chop_atoms = []
 
+    #For something like O2, can just place the hydrogens in the "Exclude Atoms" for the QM region...
     if "Exclude Atoms" in chop_params.keys():
         for exclude in chop_params["Exclude Atoms"]:
             exclude = exclude.split(":")
@@ -188,7 +226,6 @@ def protein_to_coord(protein, chop_params):
 
 
     if "Substrate Chop" in chop_params.keys():
-        
         atoms_to_remove = []
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
         for chop in chop_params["Substrate Chop"]:
@@ -387,18 +424,9 @@ def protein_to_coord(protein, chop_params):
             if state[0] == "protonate":
                 #Need to actually compute some angles and place in an atom...
                 atom_to_protonate = res.get_atom(heavy_atom)
-                
-                vectors = []
-                for  a in atom_to_protonate.bonds:
-                    vectors.append(a.coords - atom_to_protonate.coords)
-                    vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
-
-                #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-                direction = -1.1* sum(vectors)
-
-                #Label them with HX so that when we load back in, it does so normally (ie ignores these hydrogens because they shouldn't be in the protein!)
-                atoms.append(pro.atom.Atom(element = "H", coords = atom_to_protonate.coords + direction, id='HY'))
-                res.add_atom(atoms[-1])
+               
+                proton = add_proton(atom_to_protonate)
+                atoms.append(proton)
 
     if "Freeze Atoms" in chop_params.keys():
         for a in chop_params["Freeze Atoms"]:
@@ -439,7 +467,7 @@ def protein_to_coord(protein, chop_params):
             lb.write(a.label() + '\n')
 
 
-def coord_to_protein(protein):
+def coord_to_protein(initial_protein):
     #Will update coords from the coord file in the protein passed
     #Needs to have a label and a coord file present in directory
     if not os.path.isfile("coord"):
@@ -450,7 +478,7 @@ def coord_to_protein(protein):
         logger.error("No label file found")
         raise FileNotFoundError("label")
 
-    protein = addH(protein)
+    protein = addH(initial_protein)
 
     coord_lines = []
     labels = []

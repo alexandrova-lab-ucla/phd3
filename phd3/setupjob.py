@@ -95,6 +95,7 @@ class setupTMjob:
         "YOU DID NOT DEFINE A COMPLETE SET OF INTERNAL": (8, "iaut error"),
         "THE B*m*Bt-MATRIX IS SINGULAR !": (8, "iaut error"),
         "CARTESIAN COORDINATES AND VALUES OF INTERNAL COORDINATES DO  N O T   AGREE !": (3, "coord file has internals"),
+        "!!! CHOSEN OCCUPATION IMPOSSIBLE !!!": (26, "Impossible Occupation"),
         _timeout_err: (1, _timeout_err)
     }
     _runFile = "tcommands.sh"  # name of file with the turbomole commands
@@ -1269,37 +1270,15 @@ class setupPHDjob:
         self._parameters["dmd params"] = sdj.updated_parameters()
         logger.info(">>>> Running Short DMD >>>>")
         logger.info("...")
-        sdj.short_dmd(keep_movie=True, time=100)
+        sdj.short_dmd(keep_movie=True, time=50)
 
-        #TODO Can change these to just [initializer] or some sort of mapping function
-        self._parameters["QM Chop"]["Residues"].clear()
-        for res in track_residues:
-            self._parameters["QM Chop"]["Residues"].append(res.label())
-    
-        for res in track_multi:
-            tmp = f"{res[0].label()}{res[1]}-{res[2].label()}{res[3]}"
-            self._parameters["QM Chop"]["Residues"].append(tmp)
-
-        self._parameters["QM Chop"]["Exclude Atoms"].clear()
-        for atom in track_exclude_atoms:
-            self._parameters["QM Chop"]["Exclude Atoms"].append(atom.label())
-
-        self._parameters["QM Chop"]["Substrate Chop"].clear()
-        for atoms in track_substrate_chop:
-            self._parameters["QM Chop"]["Substrate Chop"].append(f"{atoms[0].label()}-{atoms[1].label()}")
-
-        self._parameters["QM Chop"]["Exclude Side Chain"].clear()
-        for res in track_exclude_side:
-            self._parametes["QM Chop"]["Exclude Side Chain"].append(res.label())
-
-        self._parameters["QM Chop"]["Protonation"].clear()
-        for res in track_protonation:
-            self._parameters["QM Chop"]["Protonation"].append([res[0].label()] + res[1:])
-
-        self._parameters["QM Chop"]["Freeze Atoms"].clear()
-        for atom in track_freeze:
-            self._parameters["QM Chop"]["Freeze Atoms"].append(atom.label())
-
+        self._parameters["QM Chop"]["Residues"] = [res.label() for res in track_residues]
+        self._parameters["QM Chop"]["Residues"] += [f"{res[0].label()}{res[1]}-{res[2].label()}{res[3]}" for res in track_multi]
+        self._parameters["QM Chop"]["Exclude Atoms"] = [atom.label() for atom in track_exclude_atoms]
+        self._parameters["QM Chop"]["Substrate Chop"] = [f"{atoms[0].label()}-{atoms[1].label()}" for atoms in track_substrate_chop]
+        self._parameters["QM Chop"]["Exclude Side Chain"] = [res.label() for res in track_exclude_side]
+        self._parameters["QM Chop"]["Protonation"] = [[res[0].label()] + res[1:] for res in track_protonation]
+        self._parameters["QM Chop"]["Freeze Atoms"] = [atom.label() for atom in track_freeze]
 
         logger.info(">>>> Loading in Movie >>>>")
         logger.info("...")
