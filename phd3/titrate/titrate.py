@@ -8,6 +8,7 @@ Date    ==>> April 16, 2020
 #Standard Library Imports
 import logging
 import os
+import shutil
 import pkg_resources
 
 #Rd Party Libraries
@@ -33,7 +34,7 @@ PROTON_PARTNER_CUTOFF =3.5
 
 class titrate_protein:
 
-    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist']
+    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step"]
 
     @staticmethod
     def expand_commands(parameters):
@@ -68,20 +69,34 @@ class titrate_protein:
         command_label = ""
         time = 0
         condensed_commands = {}
-        for command in parameters["Commands"].keys():
-            if command_label == command.split(":")[0]:
-                time += parameters["Commands"][command]["Time"]
+        for command in parameters["Remaining Commands"].keys():
+            command_split = [c for c in command.split(":") if c != ""]
+            if len(command_split) == 1:
+                #we have only one command
+                if command_label == "":
+                    command_label = "A"
+                    condensed_commands[command_label] = parameters["Remaining Commands"][command].copy()
+
+                time += parameters["Remaining Commands"][command]["Time"]
+            
+
+            elif command_label == command_split[0]:
+                time += parameters["Remaining Commands"][command]["Time"]
 
             else:
                 #new command
                 if command_label in condensed_commands:
                     condensed_commands[command_label]["Time"] = time
 
-                time = parameters["Commands"][command]['Time']
-                command_label = command.split(":")[0]
-                condensed_commands[command_label] = parameters["Commands"][command].copy()
+                time = parameters["Remaining Commands"][command]['Time']
+                command_label = command_split[0]
+                condensed_commands[command_label] = parameters["Remaining Commands"][command].copy()
 
+        condensed_commands[command_label]["Time"] = time
+
+        parameters["Commands"].clear()
         parameters["Commands"] = condensed_commands
+        parameters["Remaining Commands"].clear()
         return parameters
 
     def __init__(self, parameters):
@@ -92,6 +107,16 @@ class titrate_protein:
         self._partner_dist = parameters["Partner Distance"]
 
         self._updated_protonation = None
+        if os.path.isdir("save"):
+            pkas = [f for f in os.listdir("save") if ".pka" in f]
+            f = [int(f.split(".")[0]) for f in pkas]
+            self._step = max(f)
+            if os.path.isfile("inConstr"):
+                shutil.copy("inConstr", f"save/{self._step}.inConstr")
+                self._step += 1
+
+        else:
+            self._step = 0
 
     def evaluate_pkas(self, protein):
         #First we transform protein to Standard
@@ -119,7 +144,20 @@ class titrate_protein:
 
         logger.info("[propka]           ==>> SUCCESS")
         #Now we move onto davids actual script for evaluation of the protons and what not
+
+
+        #SAVE THE DATA
+        if not os.path.isdir("save"):
+            os.mkdir("save")
+
+        if os.path.isfile("_propka_inp.pka"):
+            shutil.copy("_propka_inp.pka", f"save/{self._step}.pka")
         
+        if os.path.isfile("inConstr") and self._step > 0:
+            shutil.copy("inConstr", f"save/{self._step-1}.inConstr")
+
+        self._step += 1
+
         with open("_propka_inp.pdb", 'r') as in_pdb:
             #Get all of the titratable residues as a list
             titratable_residues = montecarlo.process_pdb(in_pdb.readlines())

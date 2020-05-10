@@ -24,6 +24,7 @@ import phd3.utility.utilities as utilities
 from phd3.setupjob import setupDMDjob
 from phd3.utility.exceptions import ParameterError
 from phd3.titrate import titrate_protein
+from phd3.bin import submitdmd
 
 logger=logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class dmd_simulation:
 
     __slots__=["_submit_directory", "_scratch_directory", "_config", "_cores",
             "_time_to_run", "_timer_went_off",  "_start_time",
-            "_parameter_file", "_raw_parameters", "_commands", "_src_files" ,"_titration"]
+            "_parameter_file", "_raw_parameters", "_commands", "_src_files" ,"_titration", "_resub"]
 
     def __init__(self, cores: int = 1, run_dir: str='./', time=-1, pro: protein.Protein=None, parameters: dict=None):
 
@@ -47,6 +48,8 @@ class dmd_simulation:
         self._time_to_run = time
         self._timer_went_off = False
         self._start_time = 0
+        self._resub = False
+
 
         # Want to make sure that we make the scratch directory!!
         try:
@@ -129,7 +132,7 @@ class dmd_simulation:
         if self._raw_parameters["Remaining Commands"]:
             self._commands = self._raw_parameters["Remaining Commands"].copy()
 
-            if self._raw_parameters["Commands"]:
+            if len(self._raw_parameters["Commands"]) != 0:
                 all_commands = self._raw_parameters["Commands"].copy()
 
                 remove = len(self._commands)
@@ -280,17 +283,20 @@ class dmd_simulation:
 
         if self._commands:
             logger.info("Did not finish all of the commands, will save the remaining commands")
+            if "Resubmit" in self._raw_parameters.keys():
+                if self._raw_parameters["Resubmit"]:
+                    self._resub = True
 
         else:
             logger.debug("Finished all commands...writing final dmdinput.json")
 
         logger.debug("Setting remaining commands to the rest of the commands")
        
+        self._raw_parameters["Remaining Commands"] = self._commands
         if self._titration is not None:
             logger.debug("Condensing any commands remaining from the titratable feature")
             self._raw_parameters = self._titration.condense_commands(self._raw_parameters)
 
-        self._raw_parameters["Remaining Commands"] = self._commands
         with open("dmdinput.json", 'w') as dmdinput:
             logger.debug("Dumping to json")
             json.dump(self._raw_parameters, dmdinput, indent=4)
@@ -314,6 +320,16 @@ class dmd_simulation:
                     shutil.copytree(full_file_name, dest_file_name)
 
             os.chdir(os.path.abspath(self._submit_directory))
+
+        if self._resub:
+            logger.info("Resubmitting the job!")
+            submitdmd.main(_cores=self._cores, _time=self._time_to_run)
+
+        if os.path.isdir("dmd_backup"):
+            shutil.rmtree("dmd_backup")
+
+        if os.path.isfile("remaining_commands.json"):
+            os.remove("remaining_commands.json")
 
     def run_dmd(self, parameters, start_time: int, use_restart: bool):
         # Remake the start file with any changed parameters
