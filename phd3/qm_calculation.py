@@ -18,7 +18,7 @@ import time
 
 #PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
-import phd3.setupjob 
+from phd3.setupjob import setupTMjob 
 from phd3.bin import submitturbomole
 
 logger=logging.getLogger(__name__)

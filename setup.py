@@ -20,7 +20,8 @@ setup(
             'relabelpdb.py=phd3.bin.relabelpdb:main',
             'setupdmd.py=phd3.bin.setupdmd:main',
             'rundmd.py=phd3.bin.rundmd:main',
-            'm2p=phd3.bin.movietopdb:main'
+            'm2p=phd3.bin.movietopdb:main',
+            's2x=phd3.bin.scan:scan_2_xyz'
             ]
     },
 )

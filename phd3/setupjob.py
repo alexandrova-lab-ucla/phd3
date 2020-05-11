@@ -1232,7 +1232,7 @@ class setupPHDjob:
 
                 atom2 = chop.split("-")[1]
                 atom2 = atom2.split(":")
-                atom2 - protein.get_atom([atom2[0], int(atom2[1]), atom2[2]])
+                atom2 = protein.get_atom([atom2[0], int(atom2[1]), atom2[2]])
 
                 track_substrate_chop.append([atom1, atom2])
 
