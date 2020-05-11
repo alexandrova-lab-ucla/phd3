@@ -2,7 +2,7 @@
     "pdb file": "Azurin_start.pdb",
     "Resubmit" : true,
     "DMD CONVERGE": true,
-    "MAX DMD STEPS": 40,
+    "MAX DMD STEPS": 8,
     "QM Chop":{
         "Residues": ["A:45N-A:47", "A:112N-A:114", "A:117", "A:121"],
         "Protonation": [ ["A:112", "deprotonate"],
@@ -16,7 +16,7 @@
         "Substrate Chop": [],
         "Freeze Atoms": []
     },
-    "Max Iterations": 8,
+    "Max Iterations": 40,
 
     "Cluster Energy": true,
     "Cluster Centroid": true,
