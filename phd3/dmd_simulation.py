@@ -320,6 +320,7 @@ class dmd_simulation:
                     shutil.copytree(full_file_name, dest_file_name)
 
             os.chdir(os.path.abspath(self._submit_directory))
+            shutil.rmtree(os.path.abspath(self._scratch_directory))
 
         if self._resub:
             logger.info("Resubmitting the job!")

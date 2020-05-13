@@ -241,7 +241,10 @@ class TMcalculation:
                     shutil.copytree(full_file_name, dest_file_name)
         
             os.chdir(os.path.abspath(self._submit_directory))
-                         
+            #Need this for the Optimization directory specifically
+            shutil.rmtree(os.path.abspath(self._scratch_directory))
+
+
         self.clean_up()
         logger.debug("Finished Calculation")
 
