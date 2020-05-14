@@ -250,6 +250,8 @@ class dmd_simulation:
 
                 #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
                 #states defined by the user)
+                
+                #TODO, check if this raises any exceptions, and if so, bo back a step
                 updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
