@@ -293,9 +293,12 @@ class dmd_simulation:
         logger.debug("Setting remaining commands to the rest of the commands")
        
         self._raw_parameters["Remaining Commands"] = self._commands
-        if self._titration is not None:
+        if self._titration is not None and self._commands:
             logger.debug("Condensing any commands remaining from the titratable feature")
             self._raw_parameters = self._titration.condense_commands(self._raw_parameters)
+
+        elif self._titration is not None:
+            self._raw_parameters["Commands"].clear()
 
         with open("dmdinput.json", 'w') as dmdinput:
             logger.debug("Dumping to json")
