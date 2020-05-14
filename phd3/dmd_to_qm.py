@@ -10,6 +10,8 @@ import subprocess
 import os
 import numpy as np
 from subprocess import Popen, PIPE
+import sys
+sys.setrecursionlimit(10000)
 
 #PHD3 Imports
 import phd3.utility.utilities as utilities 
@@ -211,19 +213,36 @@ def protein_to_coord(initial_protein, chop_params):
             remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1], exclude[2])]))
 
     #Now we recursively delete the atoms
-    def remove_bonds_from_list(atom):
+    def remove_bonds_from_list(atom, residue=None):
         proceed = False
-
+       
         for a in atom.bonds:
-            if a not in remove_atoms:
-                proceed = True
-                break
+            if residue is None:
+                if a not in remove_atoms:
+                    proceed = True
+                    break
+        
+            else:
+                if a not in remove_atoms and a in residue.atoms:
+                    proceed = True
+                    break
 
         if proceed:
-            for a in atom.bonds:
-                remove_atoms.append(a)
-                remove_bonds_from_list(a)
+            if residue is None:
+                for a in atom.bonds:
+                    remove_atoms.append(a)
+                    remove_bonds_from_list(a)
 
+            else:
+                while atom.bonds:
+                    a = atom.bonds.pop()
+                    if a.residue is residue:
+                        if atom in a.bonds:
+                            a.bonds.remove(atom)
+                    
+                        remove_atoms.append(a)
+                        remove_bonds_from_list(a, residue)
+                    
 
     if "Substrate Chop" in chop_params.keys():
         atoms_to_remove = []
@@ -236,8 +255,8 @@ def protein_to_coord(initial_protein, chop_params):
             assert(len(keepatom) == 3)
             assert(len(removeatom) == 3)
 
-            keepatom = protein.get_atom(keepatom[0], int(keepatom[1]), keepatom[2])
-            removeatom = protein.get_atom(removeatom[0], int(removeatom[1]), removeatom[2])
+            keepatom = protein.get_atom([keepatom[0], int(keepatom[1]), keepatom[2]])
+            removeatom = protein.get_atom([removeatom[0], int(removeatom[1]), removeatom[2]])
 
             keepatom.bonds.remove(removeatom)
             removeatom.bonds.remove(keepatom)
@@ -247,11 +266,10 @@ def protein_to_coord(initial_protein, chop_params):
                 b.bonds.remove(removeatom)
                 
             atoms_to_remove.append(removeatom)
-            remove_atoms.append(removeatom)
-            chop_atoms.append(keepatom, removeatom)
+            chop_atoms.append([keepatom, removeatom])
 
         for a in atoms_to_remove:
-            remove_bonds_from_list(a)
+            remove_bonds_from_list(a, removeatom.residue)
             a.bonds = []
 
     for res in normal_residues:
@@ -453,7 +471,8 @@ def protein_to_coord(initial_protein, chop_params):
         chop[1].coords = chop[0].coords + dis
 
     for a in remove_atoms:
-        atoms.remove(a)
+        if a in atoms:
+            atoms.remove(a)
     
     with open("coord", 'w') as final:
         final.write("$coord\n")

@@ -1115,9 +1115,9 @@ class setupDMDjob:
 
                             for bonded_atoms in atoms.bonds:
                                 if bonded_atoms.element.lower() != "h" and bonded_atoms.element.lower() not in constants.METALS:
-                                    logger.debug(f"Restricting motion of atom {bonded_atoms} and atom {metal} by {0.05}")
+                                    logger.debug(f"Restricting motion of atom {bonded_atoms} and atom {atoms} by {0.05}")
                                     inConstr_file.write(
-                                        f"AtomPairRel {bonded_atoms.write_inConstr()} {metal.write_inConstr()} -{0.05} +{0.05}\n")
+                                        f"AtomPairRel {bonded_atoms.write_inConstr()} {atoms.write_inConstr()} -{0.05} +{0.05}\n")
 
                 for disp_atom in self._displacement:
                     logger.debug(
@@ -1232,7 +1232,7 @@ class setupPHDjob:
 
                 atom2 = chop.split("-")[1]
                 atom2 = atom2.split(":")
-                atom2 - protein.get_atom([atom2[0], int(atom2[1]), atom2[2]])
+                atom2 = protein.get_atom([atom2[0], int(atom2[1]), atom2[2]])
 
                 track_substrate_chop.append([atom1, atom2])
 

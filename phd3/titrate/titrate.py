@@ -248,6 +248,7 @@ class titrate_protein:
 
                     if len(change) != 4:
                         logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid}")
+                        continue
 
                 #given a histidine, we assume that only one nitrogen is ever protonated...so if we are changing
                 #its protonation state, we have to make sure we apply the opposite

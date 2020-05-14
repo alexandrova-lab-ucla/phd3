@@ -5,3 +5,4 @@ from .qm_calculation import *
 from .setupjob import *
 from .free_energy import *
 from .dmd_simulation import *
+from .scan_coordinates import *
