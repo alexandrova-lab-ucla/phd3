@@ -171,6 +171,14 @@ class TMcalculation:
             logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
             self._src_files = os.listdir(self._submit_directory)
             for file_name in self._src_files:
+                skip = False
+                for ignore in constants.IGNORE_FILES:
+                    if ignore in file_name:
+                        skip = True
+                        break
+                if skip:
+                    continue
+
                 full_file_name = os.path.join(self._submit_directory, file_name)
                 dest_file_name = os.path.join(self._scratch_directory, file_name)
                 if file_name.startswith("."):

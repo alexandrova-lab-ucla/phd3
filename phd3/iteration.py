@@ -29,6 +29,7 @@ import phd3.utility.constants as constants
 import phd3.dmd_to_qm as dmd_to_qm
 import phd3.protein as protein
 import phd3.utility.exceptions as exceptions
+from .bin import submitturbomole
 
 logger = logging.getLogger(__name__)
 
@@ -681,6 +682,12 @@ class iteration:
                     #TODO allow user to specify a default mos, alpha, beta to use!
                     pass
 
+            if os.path.isdir("trun_backup"):
+                for mo_file in constants.MO_FILES:
+                    if os.path.isfile(os.path.join("trun_backup", mo_file)):
+                        logger.debug(f"Copying up {mo_file} file from trun_backup")
+                        shutil.copy(os.path.join("trun_backup", mo_file), f"./{mo_file}")
+
             qm_params = self.parameters["qm params"].copy()
             qm_params["calculation"] = 'sp'
             start = timer()
@@ -922,6 +929,16 @@ class iteration:
         
         self.next_step = self.finish_iteration
 
+        # Check if we do a forceopt submit:
+        if qm_params['geo_iterations'] <= total_cycles and self.parameters["qm params"]["calculation"] == "forceopt" and not os.path.isfile("Optimization/GEO_OPT_CONVERGED"):
+            # Change calculation type to forceopt
+            os.chdir("Optimization")
+            with open("definput.json", "w") as definput:
+                json.dump(self.parameters["qm params"], definput)
+
+            logger.info(">>>> Submitting QM Optimization, forceopt >>>>")
+            submitturbomole.main(_cores=self.cores, _time=self.controller._time, _nodes=1, _sub=True)
+            os.chdir("..")
 
         logger.info("")
         logger.info("===================[Finished QM OPT]===================")

@@ -7,7 +7,8 @@ Date    ==>> April 16, 2020
 __all__ = [
     'Alarm',
     'ParameterError',
-    'DefineError'
+    'DefineError',
+    'Propka_Error'
 ]
 
 class Alarm(Exception):
@@ -17,4 +18,7 @@ class ParameterError(Exception):
     pass
 
 class DefineError(Exception):
+    pass
+
+class Propka_Error(Exception):
     pass

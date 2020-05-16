@@ -16,7 +16,7 @@ import propka.molecular_container
 
 #Titrate/PHD3
 from . import montecarlo
-from ..utility import constants
+from ..utility import constants, exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -135,12 +135,20 @@ class titrate_protein:
                 self.display_coupled_residues = False
 
         #Then we call propka from the import
-        my_molecule = propka.molecular_container.Molecular_container("_propka_inp.pdb", option())
-        my_molecule.calculate_pka()
-        my_molecule.write_pka()
+
+        try:
+            my_molecule = propka.molecular_container.Molecular_container("_propka_inp.pdb", option())
+            my_molecule.calculate_pka()
+            my_molecule.write_pka()
+        
+        except:
+            logger.error("Error running propka")
+            raise exceptions.Propka_Error
+
         if os.path.isfile("_propka_inp.propka_input"):
             logger.debug("Removing file: _propka_inp.propka_input")
             os.remove("_propka_inp.propka_input")
+
 
         logger.info("[propka]           ==>> SUCCESS")
         #Now we move onto davids actual script for evaluation of the protons and what not

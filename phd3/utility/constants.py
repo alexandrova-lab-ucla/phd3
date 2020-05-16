@@ -26,8 +26,11 @@ __all__=[
     'MO_FILES',
     'PROTONATED_STANDARD',
     'DEPROTONATED_STANDARD',
-    'PROTON_DISTANCE'
-]
+    'PROTON_DISTANCE',
+    'IGNORE_FILES'
+    ]
+
+IGNORE_FILES = ["slurm", "sge"]
 
 MO_FILES = ['mos', 'alpha', 'beta']
 
