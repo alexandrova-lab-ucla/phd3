@@ -630,6 +630,7 @@ class iteration:
             #Make a base setupQM object, have orca and TM inherit (overlap on interface funcs)
             #Same for the executation (running the job)
             if os.path.isfile("energy"):
+                i = 0
                 with open("energy", 'r') as energyFile:
                     for i,l in enumerate(energyFile):
                         pass
