@@ -186,7 +186,7 @@ class TMcalculation:
                     continue
 
                 try:
-                    elif os.path.isfile(full_file_name):
+                    if os.path.isfile(full_file_name):
                         shutil.copy(full_file_name, dest_file_name)
                     
                     elif os.path.isdir(full_file_name):
