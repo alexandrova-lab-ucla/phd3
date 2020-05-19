@@ -494,7 +494,7 @@ class iteration:
             logger.info(f"[Num. of Clusters]  ==>> {num_clusters}")
             logger.info(f"Time elapsed during HDBSCAN clustering: {datetime.timedelta(seconds = int(end -start))}")
             
-            if num_clusters > self.parameters["Max Clusters"]:
+            if num_clusters > self.parameters["Max Clusters"] or num_clusters <= 0:
                 logger.info("")
                 logger.info("Too many clusters")
                 logger.info("Trying to cluster with single linkage hierachy")
