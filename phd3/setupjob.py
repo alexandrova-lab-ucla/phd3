@@ -606,6 +606,11 @@ class setupTMjob:
         if self._errstate != "all done":
             self._define_logger.error(f"Error: {self._errstate}\n")
             logger.error(f"[Define]          ==>> ERROR TERMINATION ({self._errstate})")
+            
+            if self._errstate == "timeout error":
+                if os.path.isfile("control"):
+                    os.remove("control")
+            
             raise exceptions.DefineError
 
         logger.info("[Define]          ==>> Ended Normally")

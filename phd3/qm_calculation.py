@@ -185,14 +185,19 @@ class TMcalculation:
                     #These are hidden files...can be quite corrupt
                     continue
 
-                elif os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, dest_file_name)
+                try:
+                    elif os.path.isfile(full_file_name):
+                        shutil.copy(full_file_name, dest_file_name)
+                    
+                    elif os.path.isdir(full_file_name):
+                        if os.path.isdir(dest_file_name):
+                            shutil.rmtree(dest_file_name)
+                                 
+                        shutil.copytree(full_file_name, dest_file_name)
                 
-                elif os.path.isdir(full_file_name):
-                    if os.path.isdir(dest_file_name):
-                        shutil.rmtree(dest_file_name)
-                             
-                    shutil.copytree(full_file_name, dest_file_name)
+                except:
+                    logger.warn(f"{file_name} suddently vanished in thin air...")
+
 
             os.chdir(os.path.abspath(self._scratch_directory))
                              
@@ -238,16 +243,20 @@ class TMcalculation:
             for file_name in self._src_files:
                 full_file_name = os.path.join(self._scratch_directory, file_name)
                 dest_file_name = os.path.join(self._submit_directory, file_name)
-                if os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, dest_file_name)
-                
-                # Want to remove and then copy over a directory and everything in it!
-                elif os.path.isdir(full_file_name):
-                    if os.path.isdir(dest_file_name):
-                        shutil.rmtree(dest_file_name)
+                try:
+                    if os.path.isfile(full_file_name):
+                        shutil.copy(full_file_name, dest_file_name)
                     
-                    shutil.copytree(full_file_name, dest_file_name)
-        
+                    # Want to remove and then copy over a directory and everything in it!
+                    elif os.path.isdir(full_file_name):
+                        if os.path.isdir(dest_file_name):
+                            shutil.rmtree(dest_file_name)
+                        
+                        shutil.copytree(full_file_name, dest_file_name)
+       
+                except:
+                    logger.warn(f"{file_name} suddently vanished into thin air...")
+
             os.chdir(os.path.abspath(self._submit_directory))
             #Need this for the Optimization directory specifically
             shutil.rmtree(os.path.abspath(self._scratch_directory))
@@ -470,7 +479,14 @@ class TMcalculation:
                 shutil.rmtree(backup_dir)
                          
             logger.warning(f"Copying files from {os.path.abspath(self._scratch_directory)} to {backup_dir}")             
-            shutil.copytree(self._scratch_directory, backup_dir)
+            try:
+                shutil.copytree(self._scratch_directory, backup_dir)
+
+            except:
+                logger.warn("Roger, can't build here")
+                time.sleep(5)
+                shutil.copytree(self._scratch_directory, backup_dir)
+    
 
         with open("numforce/stop" if self._raw_parameters["calculation"].lower() == "numforce" else "stop" , 'w+') as stopfile:
             pass
