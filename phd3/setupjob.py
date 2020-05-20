@@ -935,15 +935,15 @@ class setupDMDjob:
                 if type(item[1]) == str:
                     tmp_item = item[0].split(":")
                     res_id = [tmp_item[0], int(tmp_item[1])]
+                    self._protonate.append([self._protein.get_residue(res_id), item[1:]])
                 
                 elif type(item[1]) == int:
                     res_id = [item[0], item[1]]
+                    self._protonate.append([self._protein.get_residue(res_id), item[2:]])
                 
                 else:
                     logger.error("Invalid specification of residue in protonation state")
                     raise ValueError
-
-                self._protonate.append([self._protein.get_residue(res_id), item[2:]])
 
 
     def full_setup(self):

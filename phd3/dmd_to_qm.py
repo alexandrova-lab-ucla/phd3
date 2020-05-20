@@ -242,7 +242,6 @@ def protein_to_coord(initial_protein, chop_params):
                     
                         remove_atoms.append(a)
                         remove_bonds_from_list(a, residue)
-                    
 
     if "Substrate Chop" in chop_params.keys():
         atoms_to_remove = []
@@ -268,8 +267,29 @@ def protein_to_coord(initial_protein, chop_params):
             atoms_to_remove.append(removeatom)
             chop_atoms.append([keepatom, removeatom])
 
+            # Can now quickly specify a different type of cut for residues
+            # Though, this won't work for including sequential residues (linked)
+            if keepatom.residue.name in constants.AMINO_ACID_RESIDUES:
+                # First we cut n and alpha carbons
+                for a in keepatom.residue.get_atom("N").bonds:
+                    if a.id == "C":
+                        keepatom.residue.get_atom("N").bonds.remove(a)
+
+                for a in keepatom.residue.get_atom("C").bonds:
+                    if a.id == "N":
+                        keepatom.residue.get_atom("C").bonds.remove(a)
+
+                # Then we remove from normal residue list
+                if keepatom.residue in normal_residues:
+                    normal_residues.remove(keepatom.residue)
+
         for a in atoms_to_remove:
-            remove_bonds_from_list(a, removeatom.residue)
+            if a.residue.name in constants.AMINO_ACID_RESIDUES:
+                remove_bonds_from_list(a)
+            
+            else:
+                remove_bonds_from_list(a, a.residue)
+            
             a.bonds = []
 
     for res in normal_residues:
