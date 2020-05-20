@@ -290,7 +290,7 @@ def protein_to_coord(initial_protein, chop_params):
 
         for a in atoms_to_remove:
             if a.residue.name in constants.AMINO_ACID_RESIDUES:
-                remove_bonds_from_list(a)
+                remove_bonds_from_list(a, a.residue)
             
             else:
                 remove_bonds_from_list(a, a.residue)
