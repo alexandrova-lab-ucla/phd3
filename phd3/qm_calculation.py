@@ -485,6 +485,9 @@ class TMcalculation:
             except:
                 logger.warn("Roger, can't build here")
                 time.sleep(5)
+                if os.path.isdir(backup_dir):
+                    shutil.rmtree(backup_dir)
+                
                 shutil.copytree(self._scratch_directory, backup_dir)
     
 
