@@ -283,6 +283,11 @@ def protein_to_coord(initial_protein, chop_params):
                 if keepatom.residue in normal_residues:
                     normal_residues.remove(keepatom.residue)
 
+                if "Exclude Sidechain" in chop_params.keys():
+                    res_id = f"{chop[0][0]}:{chop[0][1]}"
+                    if res_id in chop_params["Exclude Sidechain"]:
+                        chop_params["Exclude Sidechain"].remove(res_id)
+
         for a in atoms_to_remove:
             if a.residue.name in constants.AMINO_ACID_RESIDUES:
                 remove_bonds_from_list(a)
