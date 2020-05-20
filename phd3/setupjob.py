@@ -1142,11 +1142,16 @@ class setupDMDjob:
 
         # Update the custom protonation states
         for new_state, state in zip(new_parameters["Custom protonation states"], self._protonate):
-            new_state[0] = state[0].chain.name
-            new_state[1] = state[0].number
-            new_state[2] = state[1][0]
+            additional = False
             if len(new_state) == 4:
-                new_state[3] = state[1][1]
+                additional = True
+
+            new_state.clear()
+            new_state.append(state[0].chain.name)
+            new_state.append(state[0].number)
+            new_state.append(state[1][0])
+            if additional:
+                new_state.append(state[1][1])
 
         # Update the frozen atoms
         new_parameters["Frozen atoms"]["Chains"].clear()
