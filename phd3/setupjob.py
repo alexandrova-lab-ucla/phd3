@@ -895,7 +895,7 @@ class setupDMDjob:
             for residue in self._raw_parameters["Frozen atoms"]["Residues"]:
                 try:
                     if type(residue) == list:
-                        residue = self._protein.get_atom(residue)
+                        res = self._protein.get_residue(residue)
 
                     elif type(residue) == str:
                         residue_split = residue.split(":")

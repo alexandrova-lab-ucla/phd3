@@ -981,6 +981,22 @@ class iteration:
 
         #TODO clean up the iteration directory
 
+        logger.info(">>>> Cleaning up iteration directory >>>>")
+        for d in os.listdir("."):
+            if "sp_movie" in d:
+                logger.info(f"[Removing] ==>> {d}")
+                shutil.rmtree(d)
+
+        for d in os.listdir("dmd"):
+            if "equilibrate" in d:
+                logger.info(f"[Removing] ==>> {d}")
+                shutil.rmtree(f"dmd/{d}")
+
+            elif d.startswith("dmdstep_"):
+                logger.info(f"[Removing] ==>> {d}")
+                shutil.rmtree(f"dmd/{d}")
+
+
         logger.info("")
         logger.info("=====================[Data  Saved]=====================")
         self.next_step = None
