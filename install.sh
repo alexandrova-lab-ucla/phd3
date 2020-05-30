@@ -46,7 +46,7 @@ pip list --format=columns | grep turbopy &> /dev/null && pip uninstall turbopy &
 pip list --format=columns | grep dmdpy &> /dev/null && pip uninstall dmdpy && echo "Remove all turbopy scripts from ~/.local/bin"
 
 # Actually load
-pip list --format=columns | grep phd3 &> /dev/null || pip install --user ./ || echo "Failed to install using pip" && exit 1
+pip list --format=columns | grep phd3 &> /dev/null || pip install --user -e ./ || echo "Failed to install using pip" && exit 1
 
 echo "
 Please 'export PATH=\$HOME/.local/bin:\$PATH' in your profile so 
