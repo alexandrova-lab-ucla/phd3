@@ -932,7 +932,7 @@ class iteration:
         self.next_step = self.finish_iteration
 
         # Check if we do a forceopt submit:
-        if qm_params['geo_iterations'] <= total_cycles and self.parameters["qm params"]["calculation"] == "forceopt" and not os.path.isfile("Optimization/GEO_OPT_CONVERGED"):
+        if qm_params['geo_iterations'] < total_cycles and self.parameters["qm params"]["calculation"] == "forceopt" and not os.path.isfile("Optimization/GEO_OPT_CONVERGED"):
             # Change calculation type to forceopt
             os.chdir("Optimization")
             with open("definput.json", "w") as definput:

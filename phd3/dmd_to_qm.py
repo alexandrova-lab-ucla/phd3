@@ -205,6 +205,11 @@ def protein_to_coord(initial_protein, chop_params):
     #[a1 -> freeze, a2->change to hydrogen and freeze]
     chop_atoms = []
 
+    # Gets rid of any HDUM atoms (like for O2 and HO- ligands...)
+    for a in atoms:
+        if a.id.upper() == "HDUM":
+            remove_atoms.append(a)
+
     #For something like O2, can just place the hydrogens in the "Exclude Atoms" for the QM region...
     if "Exclude Atoms" in chop_params.keys():
         for exclude in chop_params["Exclude Atoms"]:
@@ -571,7 +576,23 @@ def coord_to_protein(initial_protein):
         except ValueError:
             logger.error("Cannot find atoms in the protein!")
             raise
-    
+   
+    # TODO Check for any HDUM atoms in the protein and update its position relative to whatever it should be bound to
+    for c in protein.chains:
+        for r in c.residues:
+            for a in r.atoms:
+                if a.id.upper() == "HDUM":
+                    for het in r.atoms:
+                        if het is a:
+                            continue
+                        
+                        if het.element.capitalize() in constants.PROTON_DISTANCE.keys():
+                            d = a.coords - het.coords
+                            d = d/np.linalg.norm(d)
+                            d = d * constants.PROTON_DISTANCE[het.element.capitalize()]
+                            a.coords = het.coords + d
+                           
+
     #Now we are tech. done!
     return protein
 
