@@ -86,7 +86,7 @@ def addH(protein):
         for res in chain.residues:
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
-                deleted_hydrogen
+                deleted_hydrogen = False
                 for atom in epsilon_nitrogen.bonds:
                     if atom.element.lower() == "h":
                         #DELETE THIS ATOM, no good two-timer
