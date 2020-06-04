@@ -86,12 +86,25 @@ def addH(protein):
         for res in chain.residues:
             if res.name.upper() == "HIS":
                 epsilon_nitrogen = res.get_atom("NE2")
+                deleted_hydrogen = False
                 for atom in epsilon_nitrogen.bonds:
                     if atom.element.lower() == "h":
                         #DELETE THIS ATOM, no good two-timer
                         epsilon_nitrogen.bonds.remove(atom)
                         res.atoms.remove(atom)
                         del atom
+                        deleted_hydrogen = True
+                
+                if not deleted_hydrogen:
+                    for a in res.atoms:
+                        if a.id.lower() == "2hne" or a.id.lower() == "he2":
+                            #bastard got through
+                            for b in a.bonds:
+                                b.bonds.remove(a)
+                            
+                            res.atoms.remove(a)
+                            del a
+                            break
                 
                 #Now we add a proton to the ND1 atom
                 delta_nitrogen = res.get_atom("ND1")
@@ -215,7 +228,7 @@ def protein_to_coord(initial_protein, chop_params):
         for exclude in chop_params["Exclude Atoms"]:
             exclude = exclude.split(":")
             assert(len(exclude) == 3)
-            remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1], exclude[2])]))
+            remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1]), exclude[2]]))
 
     #Now we recursively delete the atoms
     def remove_bonds_from_list(atom, residue=None):
