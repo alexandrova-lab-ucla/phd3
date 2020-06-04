@@ -42,6 +42,8 @@ def main():
         logger.error("Error in loading in the PDB file provided")
         sys.exit(1)
 
+    protein.reformat_protein(relabel_protein=False)
+
     logger.debug("Relabeling")
     try:
         protein.relabel(args.scheme[0])
