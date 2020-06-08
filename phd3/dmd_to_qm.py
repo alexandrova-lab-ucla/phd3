@@ -96,9 +96,11 @@ def addH(protein):
                         deleted_hydrogen = True
                 
                 if not deleted_hydrogen:
+                    logger.warn(f"Could not find his ({res}) 2HNE atom, searching again!")
                     for a in res.atoms:
                         if a.id.lower() == "2hne" or a.id.lower() == "he2":
                             #bastard got through
+                            logger.warn("Found the hydrogen!")
                             for b in a.bonds:
                                 b.bonds.remove(a)
                             
@@ -118,6 +120,7 @@ def addH(protein):
                         skip = True
 
                 if not skip:
+                    logger.debug(f"Adding delta nitrogen to {res}")
                     add_proton(delta_nitrogen, ID="HD1")
                
     #For any added protons (fix the labeling and numbering)
