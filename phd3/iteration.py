@@ -985,16 +985,16 @@ class iteration:
         for d in os.listdir("."):
             if "sp_movie" in d:
                 logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(d)
+                shutil.rmtree(d, ignore_errors=True)
 
         for d in os.listdir("dmd"):
             if "equilibrate" in d:
                 logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(f"dmd/{d}")
+                shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
             elif d.startswith("dmdstep_"):
                 logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(f"dmd/{d}")
+                shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
 
         logger.info("")

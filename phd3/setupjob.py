@@ -76,7 +76,12 @@ class setupTMjob:
         "*** specification of electrostatic field(s) ***": (4, "efield_specification"),
         "DO YOU STILL WANT TO CALCULATE THE PSEUDO-INVERSE B-MATRIX": (4, "continue_n"),
         "TO CONTINUE, ENTER <return>": (0, "continue"),
-        "HIT >return< TO CONFIRM REMOVE OF THESE INTERNAL COORDINATE": (2, "continue")
+        "HIT >return< TO CONFIRM REMOVE OF THESE INTERNAL COORDINATE": (2, "continue"),
+        "DO YOU WANT TO SWITCH OFF AUTOMATIC SHIFTING OF VIRTUAL ORBITALS ? DEFAULT=n": (0, "continue"),
+        "CURRENTLY NO CLOSED SHELL SHIFT WILL BE APPLIED": (1, "scf_shift"),
+        "ENTER START VALUE FOR DAMPING": (0, "scf_damp"),
+        "ENTER INCREMENT FOR REDUCTION OF DAMPING": (0, "continue"),
+        "ENTER MINIMAL DAMPING": (0, "continue")
     }
 
     _timeout_err = "timeout error"
@@ -138,7 +143,7 @@ class setupTMjob:
             "dsp": [],
             "stp": [],
             "efield": [], "efield_specification": [],
-            "scf": [], "scf_conv": [], "scf_iter": []
+            "scf": [], "scf_conv": [], "scf_iter": [], "scf_shift": [], "scf_damp": []
         }
 
         # Change directory to that with everything we need in it
@@ -434,6 +439,13 @@ class setupTMjob:
             self._state_responses["scf"].append("conv")
             logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
             self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
+            if "damp start" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("damp")
+                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
+
+            if "orbital shift" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("shift")
+                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
 
         if "efield" in self._raw_parameters.keys():
             if self._raw_parameters["efield"]["on"]:
