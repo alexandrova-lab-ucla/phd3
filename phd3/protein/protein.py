@@ -402,6 +402,27 @@ class Protein:
                     else:
                         atom.id = atom_label_dict[residue.name][old_atomid][newid]
 
+            #Check if OE2 comes before OE1 in GLU
+            if residue.name.upper() == "GLU":
+                oe1 = None
+                oe2 = None
+                for atom in residue.atoms:
+                    if atom.id.upper() == "OE1":
+                        oe1 = atom
+                    
+                    if atom.id.upper() == "OE2":
+                        oe2 = atom
+            
+                if oe1 is None or oe2 is None:
+                    logger.warn(f"Residue {residue} only has one oe1 or oe2!")
+
+                else:
+                    if oe1.number > oe2.number:
+                        tmp_coord = oe1.coords
+                        oe1.coords = oe2.coords
+                        oe2.coords = tmp_coord
+                        oe1.id = "OE2"
+                        oe2.id = "OE1"
 
             # TODO add Jacks glycine hydrogen fixed so that naming convention is always the same with Chimera
 

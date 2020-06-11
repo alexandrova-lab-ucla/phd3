@@ -81,11 +81,15 @@ class controller:
             #They are the same, therefore start next iteration
             self._iteration = self.last_finished_iteration + 1
 
+        if "Default MOs" in self._parameters.keys():
+            self._parameters["Default MOs"] = os.path.abspath(self._parameters["Default MOs"])
+
         logger.debug("Finding last to_next_iteration.pdb file")
         if self._iteration > 0 :
             if os.path.isfile(os.path.join(f"Iteration_{self._iteration-1}", "to_next_iteration.pdb")):
                 self._parameters["last pdb"] = os.path.abspath(os.path.join(f"Iteration_{self._iteration-1}", "to_next_iteration.pdb"))
-
+                self._parameters["Default MOs"] = os.path.abspath(f"Iteration_{self._iteration-1}/Optimization")
+            
             else:
                 logger.error("Last to_next_iteration.pdb not found!")
                 raise FileNotFoundError("to_next_iteration.pdb")

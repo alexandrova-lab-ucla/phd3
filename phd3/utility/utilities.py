@@ -767,7 +767,7 @@ def make_movie(initial_pdb, movie_file, output_pdb):
     try:
         logger.debug("Creating movie file")
         with Popen(
-                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex_M2P.linux')} {phd_config['PATHS']['parameters']} {initial_pdb} topparam {movie_file} {output_pdb} inConstr",
+                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex_M2P.linux')} {phd_config['PATHS']['parameters']} {initial_pdb} topparam {movie_file} {output_pdb} inConstr > m2p.err",
                 stdout=PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True,
                 env=os.environ) as shell:
             while shell.poll() is None:
@@ -778,6 +778,9 @@ def make_movie(initial_pdb, movie_file, output_pdb):
 
     if not os.path.isfile(output_pdb):
         raise FileNotFoundError(output_pdb)
+
+    if os.path.isfile("m2p.err"):
+        os.remove("m2p.err")
 
 def load_movie(movie_file:str):
     if not os.path.isfile(movie_file):

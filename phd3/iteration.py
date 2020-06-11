@@ -681,8 +681,10 @@ class iteration:
                         break
                 
                 if not found_mos:
-                    #TODO allow user to specify a default mos, alpha, beta to use!
-                    pass
+                    self.copy_default_mos()
+
+                        
+
 
             if os.path.isdir("trun_backup"):
                 for mo_file in constants.MO_FILES:
@@ -868,8 +870,7 @@ class iteration:
                             break
                 
                 if not found_mos:
-                    #TODO allow user to specify a default mos, alpha, beta to use!
-                    pass
+                    self.copy_default_mos()
 
             start = timer()
             geo = qm_calculation.TMcalculation(self.cores, parameters=qm_params, time=self.controller.time_left(), run_dir=self.scratch)
@@ -1012,7 +1013,14 @@ class iteration:
             with open(os.path.join(self.directory, "Optimization/stop"), 'w') as stopfile:
                 pass
 
-    
+    def copy_default_mos(self):
+        if "Default MOs" in self.parameters.keys() and self.parameters["Default MOs"] is not None:
+            for mo_file in constants.MO_FILES:
+                if os.path.isfile(os.path.join(self.parameters["Default MOs"], mo_file)):
+                    logger.info(f"Copying over {mo_file} file (from Default MOs {self.parameters['Default MOs']})")
+                    shutil.copy(os.path.join(self.parameters["Default MOs"], mo_file), f"./{mo_file}")
+            
+
     @staticmethod
     def dmd_converged( dmd_average_energies):
         if abs(dmd_average_energies[-1][0]-dmd_average_energies[-2][0]) < dmd_average_energies[-2][1]:
