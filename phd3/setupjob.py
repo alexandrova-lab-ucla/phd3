@@ -386,6 +386,23 @@ class setupTMjob:
 
         # General Menu parameters
         logger.debug("Parsing general parameters")
+        # SCF parameters
+        if self._raw_parameters["scf"]:
+            self._state_responses["general"].append("scf")
+            self._state_responses["scf"].append("iter")
+            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
+            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
+            self._state_responses["scf"].append("conv")
+            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
+            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
+            if "orbital shift" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("shift")
+                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
+            
+            if "damp start" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("damp")
+                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
+        
         # DFT parameters
         logger.debug("Parsing DFT parameters")
         if self._raw_parameters["dft"]["dft_on"]:
@@ -430,23 +447,6 @@ class setupTMjob:
             self._state_responses["stp"].append(str(self._raw_parameters['stp']['itvc']))
             logger.debug(f"Setting trust radius to: {str(self._raw_parameters['stp']['trad'])}")
             self._state_responses["stp"].append(f"trad {str(self._raw_parameters['stp']['trad'])}")
-
-        # scf parameters
-        if self._raw_parameters["scf"]:
-            self._state_responses["general"].append("scf")
-            self._state_responses["scf"].append("iter")
-            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
-            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
-            self._state_responses["scf"].append("conv")
-            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
-            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
-            if "damp start" in self._raw_parameters["scf"].keys():
-                self._state_responses["scf"].append("damp")
-                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
-
-            if "orbital shift" in self._raw_parameters["scf"].keys():
-                self._state_responses["scf"].append("shift")
-                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
 
         if "efield" in self._raw_parameters.keys():
             if self._raw_parameters["efield"]["on"]:
