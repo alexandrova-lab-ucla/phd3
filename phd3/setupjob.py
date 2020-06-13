@@ -82,7 +82,9 @@ class setupTMjob:
         "CURRENTLY NO CLOSED SHELL SHIFT WILL BE APPLIED": (1, "scf_shift"),
         "ENTER START VALUE FOR DAMPING": (0, "scf_damp"),
         "ENTER INCREMENT FOR REDUCTION OF DAMPING": (0, "continue"),
-        "ENTER MINIMAL DAMPING": (0, "continue")
+        "ENTER MINIMAL DAMPING": (0, "continue"),
+        "DO YOU WANT TO SWITCH IT ON AGAIN ?  DEFAULT=y": (0, "continue"),
+        "ENTER VALUE FOR CLOSED SHELL SHIFT OR ENTER 0 TO SWITCH": (1, "scf_shift")
     }
 
     _timeout_err = "timeout error"
@@ -386,22 +388,6 @@ class setupTMjob:
 
         # General Menu parameters
         logger.debug("Parsing general parameters")
-        # SCF parameters
-        if self._raw_parameters["scf"]:
-            self._state_responses["general"].append("scf")
-            self._state_responses["scf"].append("iter")
-            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
-            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
-            self._state_responses["scf"].append("conv")
-            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
-            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
-            if "orbital shift" in self._raw_parameters["scf"].keys():
-                self._state_responses["scf"].append("shift")
-                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
-            
-            if "damp start" in self._raw_parameters["scf"].keys():
-                self._state_responses["scf"].append("damp")
-                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
         
         # DFT parameters
         logger.debug("Parsing DFT parameters")
@@ -422,6 +408,23 @@ class setupTMjob:
         else:
             self._state_responses["dft_on"].append("off")
 
+        # SCF parameters
+        if self._raw_parameters["scf"]:
+            self._state_responses["general"].append("scf")
+            self._state_responses["scf"].append("iter")
+            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
+            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
+            self._state_responses["scf"].append("conv")
+            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
+            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
+            if "orbital shift" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("shift")
+                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
+            
+            if "damp start" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("damp")
+                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
+        
         # rij parameters
         if self._raw_parameters["rij"]:
             logger.debug("Switching on rij")
