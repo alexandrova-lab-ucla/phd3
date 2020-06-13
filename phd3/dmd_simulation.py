@@ -391,11 +391,12 @@ class dmd_simulation:
         logger.info(f"[Restart File]     ==>> {'False' if state_file == 'state' else 'True'}")
 
         #Now we execute the command to run the dmd
+        run_cores = self._cores if self._cores <=8 else 8
         try:
             with open("dmd.out", 'a') as dmd_out:
-                logger.info(f"[Issuing command]  ==>> pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa")
+                logger.info(f"[Issuing command]  ==>> pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {run_cores} -fa")
                 logger.info("...")
-                with Popen(f"pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {self._cores} -fa",
+                with Popen(f"pdmd.linux -i dmd_start -s {state_file} -p param -c outConstr -m {run_cores} -fa",
                         stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
                     while shell.poll() is None:
                         dmd_out.write(shell.stdout.readline().strip() + '\n')
