@@ -75,6 +75,8 @@ def main(_cores: int=None, _time: int=None, _nodes: int=1, _sub: bool=True):
                 logger.info(shell.stdout.readline().strip())
                 logger.info(shell.stderr.readline().strip())
         
+        return
+        
     # Finds the appropriate node to use
     logger.debug("Checking to ensure user has enough resources")
     big_enough_nodes = list(filter(lambda i: i[0] >= cores, avail_nodes))
