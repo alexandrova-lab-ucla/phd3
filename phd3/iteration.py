@@ -239,6 +239,9 @@ class iteration:
                     logger.info(f"[Ending Temp.]     ==>> {self.parameters['dmd params']['Initial Temperature']}")
                     logger.info(f"[Time]             ==>> {self.parameters['Equilibrate']['Time']}")
                     logger.info("")
+                    if os.path.isdir("equilibrate"):
+                        shutil.rmtree("equilibrate")
+
                     os.mkdir("equilibrate")
                     logger.debug("Changing directory to 'equilibrate'")
                     shutil.copy("dmdStart.pdb", "equilibrate")

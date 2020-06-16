@@ -81,7 +81,7 @@ class setupTMjob:
 
     _timeout_err = "timeout error"
     _errorresponses = {  # lines that will trigger an error
-
+        "M-1: Attention! Not enough linearly independent coord": (0, "ired error"),
         "DO YOU STILL WANT TO CALCULATE THE PSEUDO-INVERSE B-MATRIX": (5, "iaut error"),
         "ONLY AN INCOMPLETE SET OF    0 INTERNALS SPECIFIED": (4, "iaut error"),
         "nick    - REPEAT NICKNAME INPUT": (8, "basis set name error"),
