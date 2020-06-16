@@ -67,6 +67,16 @@ def main(_cores: int=None, _time: int=None, _nodes: int=1, _sub: bool=True):
         nodes = args.nodes
         sub = args.sub
 
+    elif os.path.isfile("submit.sh") and _sub:
+        logger.info(">>>> Submitting job to queue >>>>")
+        with Popen(f"{config['QUEUING']['submit']} {constants.SUBMIT_FILE_NAME}", shell=True, universal_newlines=True,
+                   stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=1, env=os.environ) as shell:
+            while shell.poll() is None:
+                logger.info(shell.stdout.readline().strip())
+                logger.info(shell.stderr.readline().strip())
+        
+        return
+        
     # Finds the appropriate node to use
     logger.debug("Checking to ensure user has enough resources")
     big_enough_nodes = list(filter(lambda i: i[0] >= cores, avail_nodes))

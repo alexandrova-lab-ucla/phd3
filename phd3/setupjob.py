@@ -14,6 +14,7 @@ import logging
 import pkg_resources
 import shutil
 import random
+import numpy as np
 
 #PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
@@ -76,7 +77,14 @@ class setupTMjob:
         "*** specification of electrostatic field(s) ***": (4, "efield_specification"),
         "DO YOU STILL WANT TO CALCULATE THE PSEUDO-INVERSE B-MATRIX": (4, "continue_n"),
         "TO CONTINUE, ENTER <return>": (0, "continue"),
-        "HIT >return< TO CONFIRM REMOVE OF THESE INTERNAL COORDINATE": (2, "continue")
+        "HIT >return< TO CONFIRM REMOVE OF THESE INTERNAL COORDINATE": (2, "continue"),
+        "DO YOU WANT TO SWITCH OFF AUTOMATIC SHIFTING OF VIRTUAL ORBITALS ? DEFAULT=n": (0, "continue"),
+        "CURRENTLY NO CLOSED SHELL SHIFT WILL BE APPLIED": (1, "scf_shift"),
+        "ENTER START VALUE FOR DAMPING": (0, "scf_damp"),
+        "ENTER INCREMENT FOR REDUCTION OF DAMPING": (0, "continue"),
+        "ENTER MINIMAL DAMPING": (0, "continue"),
+        "DO YOU WANT TO SWITCH IT ON AGAIN ?  DEFAULT=y": (0, "continue"),
+        "ENTER VALUE FOR CLOSED SHELL SHIFT OR ENTER 0 TO SWITCH": (1, "scf_shift")
     }
 
     _timeout_err = "timeout error"
@@ -138,7 +146,7 @@ class setupTMjob:
             "dsp": [],
             "stp": [],
             "efield": [], "efield_specification": [],
-            "scf": [], "scf_conv": [], "scf_iter": []
+            "scf": [], "scf_conv": [], "scf_iter": [], "scf_shift": [], "scf_damp": []
         }
 
         # Change directory to that with everything we need in it
@@ -380,6 +388,7 @@ class setupTMjob:
 
         # General Menu parameters
         logger.debug("Parsing general parameters")
+        
         # DFT parameters
         logger.debug("Parsing DFT parameters")
         if self._raw_parameters["dft"]["dft_on"]:
@@ -399,6 +408,23 @@ class setupTMjob:
         else:
             self._state_responses["dft_on"].append("off")
 
+        # SCF parameters
+        if self._raw_parameters["scf"]:
+            self._state_responses["general"].append("scf")
+            self._state_responses["scf"].append("iter")
+            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
+            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
+            self._state_responses["scf"].append("conv")
+            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
+            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
+            if "orbital shift" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("shift")
+                self._state_responses["scf_shift"].append(str(self._raw_parameters["scf"]["orbital shift"]))
+            
+            if "damp start" in self._raw_parameters["scf"].keys():
+                self._state_responses["scf"].append("damp")
+                self._state_responses["scf_damp"].append(str(self._raw_parameters["scf"]["damp start"]))
+        
         # rij parameters
         if self._raw_parameters["rij"]:
             logger.debug("Switching on rij")
@@ -424,16 +450,6 @@ class setupTMjob:
             self._state_responses["stp"].append(str(self._raw_parameters['stp']['itvc']))
             logger.debug(f"Setting trust radius to: {str(self._raw_parameters['stp']['trad'])}")
             self._state_responses["stp"].append(f"trad {str(self._raw_parameters['stp']['trad'])}")
-
-        # scf parameters
-        if self._raw_parameters["scf"]:
-            self._state_responses["general"].append("scf")
-            self._state_responses["scf"].append("iter")
-            logger.debug(f"Setting scf iteration limit to: {str(self._raw_parameters['scf']['iter'])}")
-            self._state_responses["scf_iter"].append(str(self._raw_parameters["scf"]["iter"]))
-            self._state_responses["scf"].append("conv")
-            logger.debug(f"Setting scf convergence to: f{str(self._raw_parameters['scf']['conv'])}")
-            self._state_responses["scf_conv"].append(str(self._raw_parameters["scf"]["conv"]))
 
         if "efield" in self._raw_parameters.keys():
             if self._raw_parameters["efield"]["on"]:
@@ -993,15 +1009,35 @@ class setupDMDjob:
             raise
 
         # Here we do a short run
+        overlap = False
         try:
             with Popen(f"pdmd.linux -i dmd_start_short -s state -p param -c outConstr -m 1",
                     stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
                 while shell.poll() is None:
-                    logger.debug(shell.stdout.readline().strip())
+                    line = shell.stdout.readline().strip()
+                    if "* Atoms overlap" in line:
+                        overlap = True
+                        logger.error(line)
+
+                    else:
+                        logger.debug(line)
 
         except OSError:
             logger.exception("Error calling pdmd.linux")
             raise
+
+        if overlap:
+            logger.error("Atoms are overlapping, checking for exact atoms!")
+            for chain in self._protein.chains:
+                for residues in chain.residues:
+                    for i_atom in residues.atoms:
+                        for n_atom in residues.atoms:
+                            if i_atom is n_atom:
+                                continue
+
+                            if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
+                                logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
+
 
         if not os.path.isfile("movie"):
             logger.error("movie file was not made, dmd seems to be anrgy at your pdb")

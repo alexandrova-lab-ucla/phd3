@@ -137,6 +137,26 @@ def valid_qm_parameters(parameters: dict):
             logger.error("Grid provided is not available")
             raise ParameterError(f"invalid grid provided: {parameters['dft']['grid']}")
 
+    if parameters["scf"]:
+        if "damp start" in parameters["scf"]:
+            if type(parameters["scf"]["damp start"]) != int and type(parameters["scf"]["damp start"]) != float:
+                logger.error("Invalid damp start value, must be int or float")
+                raise ParameterError(f"Invalid scf damp value provided: {parameters['scf']['damp start']}")
+            
+            if parameters["scf"]["damp start"] < 0 :
+                logger.error("Cannot have a negative damp start value, must be >=0")
+                raise ParametersError(f"Invalid scf damp value provided: {parameters['scf']['damp start']}")
+
+        if "orbital shift" in parameters["scf"]:
+            if type(parameters["scf"]["orbital shift"]) != int and type(parameters["scf"]["orbital shift"]) != float:
+                logger.error("Invalid orbital shift value, must be int or float")
+                raise ParameterError(f"Invalid orbital shift value: {parameters['scf']['orbital shift']}")
+
+            if parameters["scf"]["orbital shift"]< 0:
+                logger.error(f"Invlid orbital shift value, must be >= 0")
+                raise ParameterError(f"Invalid orbital shift value: {parameters['scf']['orbital shift']}")
+
+
     if parameters["stp"]:
         try:
             logger.debug("Checking itvc")
@@ -747,7 +767,7 @@ def make_movie(initial_pdb, movie_file, output_pdb):
     try:
         logger.debug("Creating movie file")
         with Popen(
-                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex_M2P.linux')} {phd_config['PATHS']['parameters']} {initial_pdb} topparam {movie_file} {output_pdb} inConstr",
+                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex_M2P.linux')} {phd_config['PATHS']['parameters']} {initial_pdb} topparam {movie_file} {output_pdb} inConstr > m2p.err",
                 stdout=PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, shell=True,
                 env=os.environ) as shell:
             while shell.poll() is None:
@@ -758,6 +778,9 @@ def make_movie(initial_pdb, movie_file, output_pdb):
 
     if not os.path.isfile(output_pdb):
         raise FileNotFoundError(output_pdb)
+
+    if os.path.isfile("m2p.err"):
+        os.remove("m2p.err")
 
 def load_movie(movie_file:str):
     if not os.path.isfile(movie_file):
