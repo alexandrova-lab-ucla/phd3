@@ -139,6 +139,9 @@ def main(_cores: int=None, _time: int=None, _nodes: int=1, _sub: bool=True):
         logger.exception("Could not write out submit file!")
         sys.exit(1)
 
+    if not os.path.isfile("phdinput.json"):
+        logger.warn("[WARNING] ==>> No phdinput.json found!")
+        
     # Submit the Job!!
     if sub:
         logger.info(">>>> Submitting job to queue >>>>")
