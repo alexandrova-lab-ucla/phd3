@@ -421,6 +421,9 @@ class dmd_simulation:
                 line = line.split()
                 energies.append(line)
 
+        if not energies:
+            raise ValueError("No data in echo file")
+                    
         return energies
 
     @staticmethod
