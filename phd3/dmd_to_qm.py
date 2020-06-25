@@ -324,8 +324,12 @@ def protein_to_coord(initial_protein, chop_params):
             if res.name == "GLY":
                 logger.warn("Tried to include glycine as a normal residue in the QM region")
                 remove_atoms.extend(res.atoms)
-            
+                
             else:
+                if res.name == "PRO":
+                    logger.warn("Trying to include proline as a normal residue in QM region")
+                    logger.warn("Issues/exceptions/infinite recursions can occur")
+                        
                 #We chop the residue from the rest of protein
                 for a in res.get_atom("N").bonds:
                     if a.id == "C":
