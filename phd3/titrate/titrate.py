@@ -231,7 +231,10 @@ class titrate_protein:
                     change.append(-1)
         
                 elif residue.ter_name == 'C-' and protonate:
-                    change.append(-2)
+                    #change.append(-2)
+                    logger.warn("Tried to protonate the c-terminus")
+                    logger.warn("This has been turned off permanently due to DMD issues")
+                    continue
 
                 else:
                     if protonate:
