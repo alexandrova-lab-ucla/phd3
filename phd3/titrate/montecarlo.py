@@ -212,6 +212,8 @@ def process_pdb(pdb_lines):
                         ter_type.append('N+')
                         hit_ter = False
 
+        '''
+        # Removed as C-terminus gets read poorly from Propka - bad hydrogen2boundheteroatom tag C-:HOXT2:11
         if len(line) >= 4:
             if line.startswith('TER'):
                 split_line = prev_line.split()
@@ -224,6 +226,7 @@ def process_pdb(pdb_lines):
                     
                     ter_type.append('C-')
                     hit_ter = True
+        '''
 
     # Enter the last titratable residue in
     current_titr_res = titr_res(current_res_name, current_res, current_chain, current_res_allatoms)
