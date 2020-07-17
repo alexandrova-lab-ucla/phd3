@@ -244,13 +244,31 @@ class dmd_simulation:
                         for line in tmpMovie:
                             movie.write(line)
 
-                    last_frame = utilities.last_frame("_tmpMovie.pdb")
+                    try:
+                        last_frame = utilities.last_frame("_tmpMovie.pdb")
                     
-                    #Clean up our mess
-                    logger.debug("Removing _tmpMovie.pdb file")
-                    os.remove("_tmpMovie.pdb")
-                    logger.debug(f"Removing {updated_parameters['Movie File']} file")
-                    os.remove(updated_parameters["Movie File"])
+                    except IndexError:
+                        #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
+                        #add updated_parameters to list
+                        logger.warning("Going back one iteration")
+                        if not os.path.isfile("_last_echo") or not os.path.isfile("_last_movie.pdb"):
+                            logger.error("Cannot go back a step!")
+                            raise 
+
+                        shutil.move("_last_echo", updated_parameters["Echo File"])
+                        last_frame = utilities.last_frame("_last_movie.pdb")
+                        shutil.move("_last_movie.pdb", updated_parameters["Movie File"])
+
+                        self._titration._step -=1
+                        repeat = True
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                    
+                    else:
+                        #Clean up our mess
+                        logger.debug("Removing _tmpMovie.pdb file")
+                        os.remove("_tmpMovie.pdb")
+                        logger.debug(f"Removing {updated_parameters['Movie File']} file")
+                        os.remove(updated_parameters["Movie File"])
                     
                 else:
                     last_frame = utilities.load_pdb("initial.pdb")
@@ -264,7 +282,8 @@ class dmd_simulation:
                 
                 #TODO, check if this raises any exceptions, and if so, bo back a step
                 try:
-                    updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                    if not repeat:
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
                 
                 except Propka_Error:
                     #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
@@ -283,17 +302,18 @@ class dmd_simulation:
                     updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
 
                 else:
-                    if os.path.isfile("_last_movie.pdb"):
-                        os.remove("_last_movie.pdb")
+                    if not repeat:
+                        if os.path.isfile("_last_movie.pdb"):
+                            os.remove("_last_movie.pdb")
 
-                    if os.path.isfile("movie.pdb"):
-                        shutil.copy("movie.pdb", "_last_movie.pdb")
-                    
-                    if os.path.isfile("_last_echo"):
-                        os.remove("_last_echo")
-                    
-                    if os.path.isfile(updated_parameters["Echo File"]):
-                        shutil.copy(updated_parameters["Echo File"], "_last_echo")
+                        if os.path.isfile("movie.pdb"):
+                            shutil.copy("movie.pdb", "_last_movie.pdb")
+
+                        if os.path.isfile("_last_echo"):
+                            os.remove("_last_echo")
+
+                        if os.path.isfile(updated_parameters["Echo File"]):
+                            shutil.copy(updated_parameters["Echo File"], "_last_echo")
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
                 
