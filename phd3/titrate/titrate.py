@@ -34,7 +34,7 @@ PROTON_PARTNER_CUTOFF =3.5
 
 class titrate_protein:
 
-    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step"]
+    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step", "_history"]
 
     @staticmethod
     def expand_commands(parameters):
@@ -105,6 +105,7 @@ class titrate_protein:
         self._pH = parameters["pH"]
         self._buried_cutoff = parameters["Buried Cutoff"]
         self._partner_dist = parameters["Partner Distance"]
+        self._history = []
 
         self._updated_protonation = None
         if os.path.isdir("save"):
@@ -283,11 +284,14 @@ class titrate_protein:
                 self._updated_protonation.append(change)
 
         #Assign protonations to self._updated_protonation
+        self._history.append(self._updated_protonation.copy())
         return self._updated_protonation
 
 
     def get_new_protonation_states(self):
         return self._updated_protonation if self._updated_protonation is not None else []
 
+    def get_protonation_history(self):
+        return self._history
 
 
