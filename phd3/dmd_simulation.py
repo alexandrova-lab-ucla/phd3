@@ -307,7 +307,7 @@ class dmd_simulation:
 
                 else:
                     if not repeat:
-                        if os.path.isfile("_older_movie.pdb)
+                        if os.path.isfile("_older_movie.pdb")
                             os.remove("_older_movie.pdb")
                                           
                         if os.path.isfile("_last_movie.pdb"):
