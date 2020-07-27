@@ -257,7 +257,7 @@ class dmd_simulation:
 
                         shutil.move("_older_echo", updated_parameters["Echo File"])
                         last_frame = utilities.last_frame("_older_movie.pdb")
-                        shutil.move("_older_movie.pdb", updated_parameters["Movie File"])
+                        shutil.move("_older_movie.pdb", "movie.pdb")
                         
                         if os.path.isfile("_last_movie.pdb"):
                             os.remove("_last_movie.pdb")
@@ -265,8 +265,9 @@ class dmd_simulation:
                         if os.path.isfile("_last_echo"):
                             os.remove("_last_echo")
 
-                        self._titration._step -=1
+                        self._titration._step -=2
                         repeat = True
+                        self._start_time -= (2*updated_parameters["Time"])
                     
                     else:
                         #Clean up our mess
@@ -299,9 +300,10 @@ class dmd_simulation:
                     
                     shutil.move("_last_echo", updated_parameters["Echo File"])
                     last_frame = utilities.last_frame("_last_movie.pdb")
-                    shutil.move("_last_movie.pdb", updated_parameters["Movie File"])
+                    shutil.move("_last_movie.pdb", "movie.pdb")
                     
                     self._titration._step -=1
+                    self._start_time -= updated_parameters["Time"]
                     repeat = True
                     updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
 
@@ -351,8 +353,9 @@ class dmd_simulation:
 
             if not repeat:
                 self._commands.pop(list(self._commands.keys())[0])
-                # Update the new start time!
-                self._start_time += updated_parameters["Time"]
+            
+            # Update the new start time!
+            self._start_time += updated_parameters["Time"]
 
         if self._commands:
             logger.info("Did not finish all of the commands, will save the remaining commands")
