@@ -336,11 +336,7 @@ class TMcalculation:
                 if "itrvec" in line:
                     logger.debug("Fixing itrvec in control file!")
                     control_file.write("    itrvec    0\n")
-
-                elif "$exopt" in line:
-                    logger.debug("Fixing exopt in control file!")
-                    control_file.write(f"$exopt {self._raw_parameters["escf"]["exopt"]}")
-                
+           
                 else:
                     control_file.write(line)
                                        
