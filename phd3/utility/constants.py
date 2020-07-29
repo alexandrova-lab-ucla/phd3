@@ -129,7 +129,7 @@ MFILE = "MFILE"
 
 SUBMIT_FILE_NAME = "submit.sh"
 
-AVAILABLE_CALCULATIONS = ["woelfling", "geo", "numforce", "trans", "escf", "forceopt", "singlepoint", "sp", "nf"]
+AVAILABLE_CALCULATIONS = ["woelfling", "geo", "numforce", "trans", "escf", "forceopt", "singlepoint", "sp", "nf", "egeo", "eforceopt"]
 
 QUOTES = [
     R'''
