@@ -210,7 +210,9 @@ class TMcalculation:
             "sp" : self._singlepoint,
             "trans": self._trans,
             "escf": self._escf,
-            "woelfling" : self._woelfling
+            "woelfling" : self._woelfling,
+            "egeo" : self._egeo,
+            "eforceopt" : self._eforceopt
         }
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
@@ -272,14 +274,19 @@ class TMcalculation:
     def _woelfling(self):
         logger.debug("Woelfling transition state")
         self._run("woelfling-job > woelfling.out")
-
-
-    def _forceopt(self):
+                      
+    def _forceopt(self, ex=False):
         """ Executes the commands (jobex) to perform a geometry optimization. Will resubmit if not done.
         """
         logger.debug("Force Optimization!")
         self._raw_parameters['geo_iterations'] = 100000
-        self._geo()
+                         
+        if ex:
+            self._egeo()
+        
+        else:                      
+            self._geo()
+        
         # This is where we do some light error checking
         if os.path.isfile("GEO_OPT_FAILED"):
             with open("GEO_OPT_FAILED") as error_file:
@@ -308,6 +315,44 @@ class TMcalculation:
                 logger.error("No energy file, something is wrong!")
                 self._resub = False
 
+    def _eforceopt(self):
+        self._forceopt(ex=True)
+    
+    def _egeo(self):
+        """ Executes the commands (jobex -ex) to perform a geometry optimization
+        
+        :return: True if successful, nothing otherwise
+        """
+        logger.debug("Excited state geometry optimization job")
+        logger.debug("Checking control file for proper itvc and exopt")
+        
+        control_lines = []
+        with open("control", 'r') as control_file:
+            for line in control_file:
+                control_lines.append(line)
+                         
+        with open("control", "w+") as control_file:
+            for line in control_lines:
+                if "itrvec" in line:
+                    logger.debug("Fixing itrvec in control file!")
+                    control_file.write("    itrvec    0\n")
+
+                elif "$exopt" in line:
+                    logger.debug("Fixing exopt in control file!")
+                    control_file.write(f"$exopt {self._raw_parameters["escf"]["exopt"]}")
+                
+                else:
+                    control_file.write(line)
+                                       
+        command = f"jobex -ex -c {str(self._raw_parameters['geo_iterations'])}"
+
+        if self._raw_parameters["gcart"] is not None:
+            command += f" -gcart {str(self._raw_parameters['gcart'])}"
+
+        command += f" -np {self._cores}"
+
+        self._run(command + " > jobex_ex.out")
+                         
     def _geo(self):
         """ Exceutes the commands (jobex) to perform a geometry optimization
 
