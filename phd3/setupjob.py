@@ -1031,12 +1031,13 @@ class setupDMDjob:
             for chain in self._protein.chains:
                 for residues in chain.residues:
                     for i_atom in residues.atoms:
-                        for n_atom in residues.atoms:
-                            if i_atom is n_atom:
-                                continue
+                        for n_res in chain.residues:
+                            for n_atom in n_res.atoms:
+                                if i_atom is n_atom:
+                                    continue
 
-                            if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
-                                logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
+                                if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
+                                    logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
 
 
         if not os.path.isfile("movie"):
