@@ -235,7 +235,7 @@ def protein_to_coord(initial_protein, chop_params):
                 remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1]), exclude[2]]))
                
             elif len(exclude) == 2:
-                remove_atoms.extend(protein.get_residue([exclude[0],int(exclude[1])).atoms)
+                remove_atoms.extend(protein.get_residue([exclude[0],int(exclude[1])]).atoms)
                 
     #Now we recursively delete the atoms
     def remove_bonds_from_list(atom, residue=None):
