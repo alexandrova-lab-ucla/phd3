@@ -1267,7 +1267,12 @@ class setupPHDjob:
         if "Exclude Atoms" in self._parameters["QM Chop"].keys():
             for atom in self._parameters["QM Chop"]["Exclude Atoms"]:
                 atom = atom.split(":")
-                track_exclude_atoms.append(protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+                if len(atom) == 3:
+                    track_exclude_atoms.append(protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+                elif len(atom) == 2:
+                    track_exclude_atoms.extend(protein.get_residue([atom[0], int(atom[1])]).atoms)
+                else:
+                    logger.error(f"Invalid specification of Exclude atoms {atom}")
 
         track_substrate_chop = []
         if "Substrate Chop" in self._parameters["QM Chop"].keys():
