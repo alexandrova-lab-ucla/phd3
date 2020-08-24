@@ -80,6 +80,9 @@ class Residue:
         for atom in self.atoms:
             atom.chain = chain
 
+    def reorder_atoms(self):
+        self.atoms.sort(reverse=False, key=lambda x: x.number)
+
     def __str__(self):
         return f"{self.name} {self.number}"
 

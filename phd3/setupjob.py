@@ -1205,6 +1205,26 @@ class setupDMDjob:
 
         return new_parameters
 
+    def update_from_movie(self):
+        last_frame = utilities.load_movie("movie.pdb")[-1]
+        linked_atoms = []
+        
+        for res in self._protein.sub_chain.residues:
+            for atom in res.atoms:
+                if atom.element.lower() not in constants.METALS:
+                    linked_atoms.append([atom, last_frame.get_atom(atom.label())])
+        
+        #Now we reformat the last_frame so that it is consistent...
+        last_frame.reformat_protein(relabel_protein=False)
+        for atom_pairs in linked_atoms:
+            atom_pairs[0].id = atom_pairs[1].id
+            atom_pairs[0].number = atom_pairs[1].number
+
+        for res in self._protein.sub_chain.residues:
+            res.reorder_atoms()
+
+
+
 class setupPHDjob:
 
     #call setupDMD first
@@ -1323,6 +1343,10 @@ class setupPHDjob:
         logger.info(">>>> Running Short DMD >>>>")
         logger.info("...")
         sdj.short_dmd(keep_movie=True, time=50)
+        utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
+
+        # Updates numbering of hydrogens on substrates
+        sdj.update_from_movie()
 
         self._parameters["QM Chop"]["Residues"] = [res.label() for res in track_residues]
         self._parameters["QM Chop"]["Residues"] += [f"{res[0].label()}{res[1]}-{res[2].label()}{res[3]}" for res in track_multi]
@@ -1334,7 +1358,6 @@ class setupPHDjob:
 
         logger.info(">>>> Loading in Movie >>>>")
         logger.info("...")
-        utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
         last_protein = utilities.load_movie("movie.pdb")[-1]
 
         os.chdir("..")
@@ -1350,8 +1373,8 @@ class setupPHDjob:
 
         os.chdir("..")
 
-        shutil.copy("dmd_setup/initial.pdb", "start.pdb")
         self._parameters["pdb file"] = "start.pdb"
+        protein.write_pdb(name="start.pdb")
 
         #Write out the phdinput.json
         with open("phdinput.json", "w") as param_file:

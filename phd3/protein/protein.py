@@ -184,6 +184,10 @@ class Protein:
             self.make_bond_table()
 
     def get_atom(self, identifier):
+        if type(identifier) == str:
+            identifier = identifier.split(":")
+            identifier[1] = int(identifier[1])
+
         for chain in self.chains:
             if chain.name == identifier[0]:
                 for residue in chain.residues:
