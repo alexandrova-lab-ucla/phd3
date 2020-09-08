@@ -404,6 +404,7 @@ class TMcalculation:
         """ Exceutes the commands (NumForce) to perform a numforce calculation """
         logger.debug("NumForce Job")
         if not os.path.isdir("numforce"):        
+            self._run(f"dscf -smpcpus {self._cores} > dscf.out")
             self._run(f"escf -smpcpus {self._cores} > escf.out")
             self._run(f"egrad -smpcpus {self._cores} > egrad.out")
 
