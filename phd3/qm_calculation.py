@@ -212,7 +212,9 @@ class TMcalculation:
             "escf": self._escf,
             "woelfling" : self._woelfling,
             "egeo" : self._egeo,
-            "eforceopt" : self._eforceopt
+            "eforceopt" : self._eforceopt,
+            "enumforce" : self._enumforce,
+            "enf" : self._enumforce
         }
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
@@ -398,6 +400,73 @@ class TMcalculation:
         command = f"escf -smpcpus {self._cores} > escf.out"
         self._run(command)
 
+    def _enumforce(self):
+        """ Exceutes the commands (NumForce) to perform a numforce calculation """
+        logger.debug("NumForce Job")
+        if not os.path.isdir("numforce"):        
+            self._run(f"escf -smpcpus {self._cores}")
+            self._run(f"egrad -smpcpus {self._cores}")
+
+        elif os.path.isdir("numforce/KraftWerk"):
+            logger.debug("Checking to see if Kraftwerk directory is cleaned up")
+            kraftwerk_files = os.listdir("numforce/KraftWerk")
+
+            deleteFiles = [f for f in kraftwerk_files if "ENVIRONMENT" in f or "lockhost." in f]
+            lockFiles = [f for f in kraftwerk_files if "lock." in f]
+            
+            jobs = [f.split('.')[1] for f in lockFiles]
+            
+            deleteFiles.extend(lockFiles)
+            # TODO add some try and except clauses around the remove and rmtree
+            for e in deleteFiles:
+                logger.debug(f"Removing file: {e}")
+                os.remove(os.path.join("numforce/KraftWerk", e))
+
+            for j in jobs:
+                if os.path.isdir(os.path.join("numforce/KraftWerk", j)):
+                    logger.debug(f"Removing directory: {j}")
+                    shutil.rmtree(os.path.join("numforce/KraftWerk", j))
+
+                if os.path.isfile(os.path.join("numforce/KraftWerk", j + ".log")):
+                    logger.debug(f"Removing file: {j}")
+                    os.remove(os.path.join("numforce/KraftWerk", j + ".log"))
+
+                for k in kraftwerk_files:
+                    if k.startswith(j + '.') and k.endswith('.err'):
+                        if os.path.isfile(os.path.join("numforce/KraftWerk", k)):
+                            logger.debug(f"Removing file:{k}")
+                            os.remove(os.path.join("numforce/KraftWerk", k))
+
+                        else:
+                            logger.debug(f"File: {k}, must have been already removed")
+                        
+                        break
+
+            logger.debug("Cleaned up the Kraftwerk directory!")
+
+        ex_state = 1
+                         
+        with open("control") as control_file:
+            for line in control_file:
+                if line.startswith("$exopt"):
+                    ex_state = int(line.split()[-1])
+                    break
+                         
+        command = f"NumForce -ex {ex_state} -c"
+        if self._raw_parameters["freeze_atoms"]:
+            command += " -frznuclei"
+
+        command += f" -mfile {constants.MFILE} > numforce.out"
+        self._run(command)
+        if not self._timer_went_off:
+            logger.info("Trying to delete KraftWerk directory")
+            try:
+                shutil.rmtree("numforce/KraftWerk")
+
+            except:
+                logger.info("I guess there is no KraftWerk to delete")
+                pass
+                         
     def _numforce(self):
         """ Exceutes the commands (NumForce) to perform a numforce calculation """
         logger.debug("NumForce Job")
