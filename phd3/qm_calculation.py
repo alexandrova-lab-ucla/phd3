@@ -404,8 +404,8 @@ class TMcalculation:
         """ Exceutes the commands (NumForce) to perform a numforce calculation """
         logger.debug("NumForce Job")
         if not os.path.isdir("numforce"):        
-            self._run(f"escf -smpcpus {self._cores}")
-            self._run(f"egrad -smpcpus {self._cores}")
+            self._run(f"escf -smpcpus {self._cores} > escf.out")
+            self._run(f"egrad -smpcpus {self._cores} > egrad.out")
 
         elif os.path.isdir("numforce/KraftWerk"):
             logger.debug("Checking to see if Kraftwerk directory is cleaned up")
@@ -452,7 +452,7 @@ class TMcalculation:
                     ex_state = int(line.split()[-1])
                     break
                          
-        command = f"NumForce -ex {ex_state} -c"
+        command = f"NumForce -ex {ex_state} -central"
         if self._raw_parameters["freeze_atoms"]:
             command += " -frznuclei"
 
@@ -515,7 +515,7 @@ class TMcalculation:
 
             logger.debug("Cleaned up the Kraftwerk directory!")
 
-        command = "NumForce -c"
+        command = "NumForce -central"
         if self._raw_parameters["freeze_atoms"]:
             command += " -frznuclei"
 
