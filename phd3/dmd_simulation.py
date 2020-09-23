@@ -321,6 +321,7 @@ class dmd_simulation:
                                 shutil.copy(updated_parameters["Echo File"], "_last_echo")
                     
                 else:
+                    logger.info("Skipping propka eval, no movie file")
                     last_frame = utilities.load_pdb("initial.pdb")
                 
                 if os.path.isfile(updated_parameters['Restart File']):
