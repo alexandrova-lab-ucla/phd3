@@ -276,56 +276,56 @@ class dmd_simulation:
                         logger.debug(f"Removing {updated_parameters['Movie File']} file")
                         os.remove(updated_parameters["Movie File"])
                     
+                    #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
+                    #states defined by the user)
+
+                    #TODO, check if this raises any exceptions, and if so, bo back a step
+                    try:
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+
+                    except Propka_Error:
+                        #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
+                        #add updated_parameters to list
+                        logger.warning("Going back one iteration")
+                        if not os.path.isfile("_last_echo") or not os.path.isfile("_last_movie.pdb"):
+                            logger.error("Cannot go back a step!")
+                            raise 
+
+                        shutil.move("_last_echo", updated_parameters["Echo File"])
+                        last_frame = utilities.last_frame("_last_movie.pdb")
+                        shutil.move("_last_movie.pdb", "movie.pdb")
+
+                        self._titration._step -=1
+                        self._start_time -= updated_parameters["Time"]
+                        repeat = True
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+
+                    else:
+                        if not repeat:
+                            if os.path.isfile("_older_movie.pdb"):
+                                os.remove("_older_movie.pdb")
+
+                            if os.path.isfile("_last_movie.pdb"):
+                                shutil.copy("_last_movie.pdb", "_older_movie.pdb")
+
+                            if os.path.isfile("movie.pdb"):
+                                shutil.copy("movie.pdb", "_last_movie.pdb")
+
+                            if os.path.isfile("_older_echo"):
+                                os.remove("_older_echo")
+
+                            if os.path.isfile("_last_echo"):
+                                shutil.copy("_last_echo", "_older_echo")
+
+                            if os.path.isfile(updated_parameters["Echo File"]):
+                                shutil.copy(updated_parameters["Echo File"], "_last_echo")
+                    
                 else:
                     last_frame = utilities.load_pdb("initial.pdb")
                 
                 if os.path.isfile(updated_parameters['Restart File']):
                     logger.debug(f"Removing {updated_parameters['Restart File']} file")
                     os.remove(updated_parameters['Restart File'])
-
-                #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
-                #states defined by the user)
-                
-                #TODO, check if this raises any exceptions, and if so, bo back a step
-                try:
-                    updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
-                
-                except Propka_Error:
-                    #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
-                    #add updated_parameters to list
-                    logger.warning("Going back one iteration")
-                    if not os.path.isfile("_last_echo") or not os.path.isfile("_last_movie.pdb"):
-                        logger.error("Cannot go back a step!")
-                        raise 
-                    
-                    shutil.move("_last_echo", updated_parameters["Echo File"])
-                    last_frame = utilities.last_frame("_last_movie.pdb")
-                    shutil.move("_last_movie.pdb", "movie.pdb")
-                    
-                    self._titration._step -=1
-                    self._start_time -= updated_parameters["Time"]
-                    repeat = True
-                    updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
-
-                else:
-                    if not repeat:
-                        if os.path.isfile("_older_movie.pdb"):
-                            os.remove("_older_movie.pdb")
-                                          
-                        if os.path.isfile("_last_movie.pdb"):
-                            shutil.copy("_last_movie.pdb", "_older_movie.pdb")
-                                 
-                        if os.path.isfile("movie.pdb"):
-                            shutil.copy("movie.pdb", "_last_movie.pdb")
-
-                        if os.path.isfile("_older_echo"):
-                            os.remove("_older_echo")
-                                          
-                        if os.path.isfile("_last_echo"):
-                            shutil.copy("_last_echo", "_older_echo")
-
-                        if os.path.isfile(updated_parameters["Echo File"]):
-                            shutil.copy(updated_parameters["Echo File"], "_last_echo")
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
                 
