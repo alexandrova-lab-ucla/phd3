@@ -102,7 +102,7 @@ class dmd_simulation:
             raise
 
         if self._raw_parameters["titr"]["titr on"]:
-            self._titration = titrate_protein(self._raw_parameters["titr"])
+            self._titration = titrate_protein(self._raw_parameters["titr"], self._raw_parameters["Custom protonation states"])
             self._raw_parameters = self._titration.expand_commands(self._raw_parameters)            
 
         else:
@@ -321,11 +321,9 @@ class dmd_simulation:
                                 shutil.copy(updated_parameters["Echo File"], "_last_echo")
                     
                 else:
-                    logger.info("Will throw away propka evaluation")
-                    logger.info("Propka still running, to save data")
                     last_frame = utilities.load_pdb("initial.pdb")
                     try:
-                        self._titration.evaluate_pkas(last_frame)
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
                 
                     except Propka_Error:
                         logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")

@@ -99,7 +99,7 @@ class titrate_protein:
         parameters["Remaining Commands"].clear()
         return parameters
 
-    def __init__(self, parameters):
+    def __init__(self, parameters, initial_protonation = []):
 
         #Parameters for titration
         self._pH = parameters["pH"]
@@ -108,8 +108,7 @@ class titrate_protein:
         self._history = []
 
         # Sets initial protonation states
-        self._updated_protonation = parameters["Custom protonation states"]
-        
+        self._updated_protonation = initial_protonation.copy()        
         # Make save directory
         if os.path.isdir("save"):
             pkas = [f for f in os.listdir("save") if ".pka" in f]
@@ -205,7 +204,10 @@ class titrate_protein:
             residue.update_prots()
         
         protonation_changes = []
-        
+       
+        remove = []
+        switch_his = []
+
         for residue in titratable_residues:
             if residue.change[0] != "None":
                 change = []
@@ -237,8 +239,13 @@ class titrate_protein:
                     if protonate:
                         if residue.amino_acid.upper() not in constants.PROTONATED_STANDARD.keys():
                             logger.debug("Cannot protonate residue {residue.amino_acid}")
+                            remove.append(change[:2])
                             continue
                         
+                        elif residue.amino_acid.upper() == "HIS" and residue.change_heteroatom[0] == "ND1":
+                            switch_his.append(change[:2])
+                            continue
+
                         for index, pairs in enumerate(constants.PROTONATED_STANDARD[residue.amino_acid.upper()]):
                             if residue.change_heteroatom[0] == pairs[0]:
                                 change.append(index+1)
@@ -247,6 +254,11 @@ class titrate_protein:
                     else:
                         if residue.amino_acid.upper() not in constants.DEPROTONATED_STANDARD.keys():
                             logger.debug("Cannot deprotonate residue {residue.amino_acid}")
+                            remove.append(change[:2])
+                            continue
+                        
+                        elif residue.amino_acid.upper() == "HIS" and residue.change_heteroatom[0] == "NE2":
+                            switch_his.append(change[:2])
                             continue
                         
                         for index, pairs in enumerate(constants.DEPROTONATED_STANDARD[residue.amino_acid.upper()]):
@@ -258,39 +270,48 @@ class titrate_protein:
                         logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid}")
                         continue
 
-                #given a histidine, we assume that only one nitrogen is ever protonated...so if we are changing
-                #its protonation state, we have to make sure we apply the opposite
-                if residue.amino_acid.upper() == "HIS":
-                    add_change = []
-                    #if deprotonating the ND1, we protonate the NE2 by defaults
-                    if not protonate and residue.change_heteroatom[0] == "ND1":
-                        # We need to protonate the other side
-                        add_change = change[:-2]
-                        add_change.append("protonate")
-
-                    #if protonating NE2, we deprotonate ND1 as well.
-                    elif protonate and residue.change_heteroatom[0] == "NE2":
-                        # We want to deprotonate the delta nitrogen then
-                        add_change = change[:-2]
-                        add_change.append("deprotonate")
-                        
-                    if add_change:
-                        self._updated_protonation.append(add_change)
-
                 protonation_changes.append(change)
 
         for change in protonation_changes:
-            residue = protein.get_residue(change[:1])
+            residue = protein.get_residue(change[:2])
             for current in self._updated_protonation:
-                current_residue = protein.get_residue(change[:1])
+                current_residue = protein.get_residue(current[:2])
                 if residue == current_residue:
                     current = change
+                    if residue.name.upper() == "HIS":
+                        if change[2] == "protonate":
+                            self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                        
+                        else:
+                            self._updated_protonation.append([change[0], change[1], "protonate"])
+                    
                     break
                 
             else:
+                if residue.name.upper() == "HIS":
+                    if change[2] == "protonate":
+                        self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                    
+                    else:
+                        self._updated_protonation.append([change[0], change[1], "protonate"])
+                
                 self._updated_protonation.append(change)
                 
-        #Assign protonations to self._updated_protonation
+        if switch_his + remove:
+            for switch in switch_his + remove:
+                switch_res = protein.get_residue(switch[:2])
+                remove_index = []
+                for i in range(len(self._updated_protonation)):
+                    residue = protein.get_residue(self._updated_protonation[i][:2])
+                    if residue == switch_res:
+                        remove_index.append(i)
+
+                remove_index.reverse()
+                [self._updated_protonation.pop(i) for i in remove_index]
+
+        # Assign protonations to self._updated_protonation
+        # List -> Tuple -> Set -> List to get rid of duplicates
+        self._updated_protonation = [list(item) for item in set(tuple(row) for row in self._updated_protonation)]
         self._history.append(self._updated_protonation.copy())
         return self._updated_protonation
 

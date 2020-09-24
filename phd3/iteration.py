@@ -923,7 +923,7 @@ class iteration:
             logger.info(f"[Final QM Energy] ==>> {self.qm_final_energy}")
         
         #Now we reinstall the coords into the protein!
-        self.to_next_iteration = dmd_to_qm.coord_to_protein(self.pdb_winner[0])
+        self.to_next_iteration = dmd_to_qm.coord_to_protein(self.pdb_winner[0], self.parameters["QM Chop"])
 
 
         #Now we reinstall into the protein

@@ -1332,6 +1332,15 @@ class setupPHDjob:
                 atom_id = atom[2]
                 track_freeze.append(protein.get_atom([chain, res_num, atom_id]))
 
+        track_dummy = []
+        if "Dummy H" in self._parameters["QM Chop"].keys():
+            for atom in self._parameters["QM Chop"]["Dummy H"]:
+                atom = atom.split(":")
+                chain = atom[0]
+                res_num = int(atom[1])
+                atom_id = atom[2]
+                track_dummy.append(protein.get_atom([chain, res_num, atom_id]))
+
         if os.path.isdir("dmd_setup"):
             shutil.rmtree("dmd_setup")
 
@@ -1357,6 +1366,7 @@ class setupPHDjob:
         self._parameters["QM Chop"]["Exclude Side Chain"] = [res.label() for res in track_exclude_side]
         self._parameters["QM Chop"]["Protonation"] = [[res[0].label()] + res[1:] for res in track_protonation]
         self._parameters["QM Chop"]["Freeze Atoms"] = [atom.label() for atom in track_freeze]
+        self._parameters["QM Chop"]["Dummy H"] = [atom.label() for atom in track_dummy]
 
         logger.info(">>>> Loading in Movie >>>>")
         logger.info("...")

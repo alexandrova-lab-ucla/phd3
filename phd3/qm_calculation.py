@@ -516,7 +516,7 @@ class TMcalculation:
 
             logger.debug("Cleaned up the Kraftwerk directory!")
 
-        command = "NumForce -central"
+        command = "NumForce -c"
         if self._raw_parameters["freeze_atoms"]:
             command += " -frznuclei"
 
