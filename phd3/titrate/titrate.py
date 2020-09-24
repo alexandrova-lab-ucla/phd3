@@ -107,7 +107,10 @@ class titrate_protein:
         self._partner_dist = parameters["Partner Distance"]
         self._history = []
 
-        self._updated_protonation = None
+        # Sets initial protonation states
+        self._updated_protonation = parameters["Custom protonation states"]
+        
+        # Make save directory
         if os.path.isdir("save"):
             pkas = [f for f in os.listdir("save") if ".pka" in f]
             f = [int(f.split(".")[0]) for f in pkas]
@@ -200,15 +203,8 @@ class titrate_protein:
         montecarlo.MC_prot_change(all_networks, self._pH)
         for residue in titratable_residues:
             residue.update_prots()
-
-
-        #Any cleanup if necessary
-        #Also, may want to print out new protein with the protonation states...but I don't know why we would really care fo that
-        if self._updated_protonation is not None:
-            self._updated_protonation.clear()
         
-        else:
-            self._updated_protonation = []
+        protonation_changes = []
         
         for residue in titratable_residues:
             if residue.change[0] != "None":
@@ -281,8 +277,19 @@ class titrate_protein:
                     if add_change:
                         self._updated_protonation.append(add_change)
 
-                self._updated_protonation.append(change)
+                protonation_changes.append(change)
 
+        for change in protonation_changes:
+            residue = protein.get_residue(change[:1])
+            for current in self._updated_protonation:
+                current_residue = protein.get_residue(change[:1])
+                if residue == current_residue:
+                    current = change
+                    break
+                
+            else:
+                self._updated_protonation.append(change)
+                
         #Assign protonations to self._updated_protonation
         self._history.append(self._updated_protonation.copy())
         return self._updated_protonation
