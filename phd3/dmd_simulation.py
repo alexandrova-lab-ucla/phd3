@@ -321,9 +321,15 @@ class dmd_simulation:
                                 shutil.copy(updated_parameters["Echo File"], "_last_echo")
                     
                 else:
-                    logger.info("Skipping propka eval, no movie file")
+                    logger.info("Will throw away propka evaluation")
+                    logger.info("Propka still running, to save data")
                     last_frame = utilities.load_pdb("initial.pdb")
+                    try:
+                        self._titration.evaluate_pkas(last_frame)
                 
+                    except Propka_Error:
+                        logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")
+                                     
                 if os.path.isfile(updated_parameters['Restart File']):
                     logger.debug(f"Removing {updated_parameters['Restart File']} file")
                     os.remove(updated_parameters['Restart File'])
