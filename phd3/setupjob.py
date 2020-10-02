@@ -367,8 +367,8 @@ class setupTMjob:
                         f"b \"{atom.lower()}\" {self._raw_parameters['basis'][atom]}")
 
         # Occupation menu settings
-        logger.debug("Writing MOs to binary")
-        self._state_responses["occupation"].append("atb")
+#        logger.debug("Writing MOs to binary")
+#        self._state_responses["occupation"].append("atb")
         logger.debug("Switched on eht")
         self._state_responses["occupation"].append("eht")
 

@@ -473,11 +473,11 @@ class TMcalculation:
         logger.debug("NumForce Job")
         if not os.path.isdir("numforce"):        
             if self._raw_parameters["rij"]:
-                self._run(f"ridft -smpcpus {self._cores}")
-                self._run(f"rdgrad -smpcpus {self._cores}")
+                self._run(f"ridft -smpcpus {self._cores} > ridft.out")
+                self._run(f"rdgrad -smpcpus {self._cores} > rdgrad.out")
             else:
-                self._run(f"dscf -smpcpus {self._cores}")
-                self._run(f"grad -smpcpus {self._cores}")
+                self._run(f"dscf -smpcpus {self._cores} > dscf.out")
+                self._run(f"grad -smpcpus {self._cores} > grad.out")
 
         elif os.path.isdir("numforce/KraftWerk"):
             logger.debug("Checking to see if Kraftwerk directory is cleaned up")
