@@ -68,7 +68,11 @@ def addH(protein):
     except OSError:
         logger.exception("Error calling chimera")
         raise
-   
+
+    if not os.path.isfile("addh.pdb"):
+        logger.exception("Could not call chimera, check your path")
+        raise OSError("chimera")
+
     logger.debug("Removing chimeraddh.com")
     os.remove("chimeraaddh.com")
     logger.debug("Removing _temp.pdb")
@@ -232,7 +236,7 @@ def protein_to_coord(initial_protein, chop_params):
             exclude = exclude.split(":")
             assert(len(exclude) == 3)
             remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1]), exclude[2]]))
-
+                
     #Now we recursively delete the atoms
     def remove_bonds_from_list(atom, residue=None):
         proceed = False
@@ -324,8 +328,12 @@ def protein_to_coord(initial_protein, chop_params):
             if res.name == "GLY":
                 logger.warn("Tried to include glycine as a normal residue in the QM region")
                 remove_atoms.extend(res.atoms)
-            
+                
             else:
+                if res.name == "PRO":
+                    logger.warn("Trying to include proline as a normal residue in QM region")
+                    logger.warn("Issues/exceptions/infinite recursions can occur")
+                        
                 #We chop the residue from the rest of protein
                 for a in res.get_atom("N").bonds:
                     if a.id == "C":
@@ -500,6 +508,13 @@ def protein_to_coord(initial_protein, chop_params):
             atom_id = a[2]
             protein.get_atom([chain, res_num, atom_id]).freeze = True
 
+    if "Dummy H" in chop_params.keys():
+        for a in chop_params["Dummy H"]:
+            a = a.split(":")
+            chain = a[0]
+            res_num = int(a[1])
+            atom_id = a[2]
+            remove_atoms.append(protein.get_atom([chain, res_num, atom_id]))
 
     #Make sure that the chops are not connected to each other
     for chop in chop_atoms:
@@ -532,7 +547,7 @@ def protein_to_coord(initial_protein, chop_params):
             lb.write(a.label() + '\n')
 
 
-def coord_to_protein(initial_protein):
+def coord_to_protein(initial_protein, chop_params):
     #Will update coords from the coord file in the protein passed
     #Needs to have a label and a coord file present in directory
     if not os.path.isfile("coord"):
@@ -593,21 +608,20 @@ def coord_to_protein(initial_protein):
             logger.error("Cannot find atoms in the protein!")
             raise
    
-    # TODO Check for any HDUM atoms in the protein and update its position relative to whatever it should be bound to
-    for c in protein.chains:
-        for r in c.residues:
-            for a in r.atoms:
-                if a.id.upper() == "HDUM":
-                    for het in r.atoms:
-                        if het is a:
-                            continue
-                        
-                        if het.element.capitalize() in constants.PROTON_DISTANCE.keys():
-                            d = a.coords - het.coords
-                            d = d/np.linalg.norm(d)
-                            d = d * constants.PROTON_DISTANCE[het.element.capitalize()]
-                            a.coords = het.coords + d
-                           
+                          
+    if "Dummy H" in chop_params.keys():
+        for atom in chop_params["Dummy H"]:
+            atom = atom.split(":")
+            atom = protein.get_atom([atom[0], int(atom[1]), atom[2]])
+            if atom.bonds:
+                b = atom.bonds[0]
+                d = b.coords - atom.coords
+                distance = np.linalg.norm(d)
+                d = d/distance
+                if distance > 1.5:
+                    atom.coords = b.coords - (1.1*d)
+
+                
 
     #Now we are tech. done!
     return protein

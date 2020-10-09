@@ -210,7 +210,11 @@ class TMcalculation:
             "sp" : self._singlepoint,
             "trans": self._trans,
             "escf": self._escf,
-            "woelfling" : self._woelfling
+            "woelfling" : self._woelfling,
+            "egeo" : self._egeo,
+            "eforceopt" : self._eforceopt,
+            "enumforce" : self._enumforce,
+            "enf" : self._enumforce
         }
 
         calc = switcher.get(self._raw_parameters["calculation"].lower(), None)
@@ -272,14 +276,19 @@ class TMcalculation:
     def _woelfling(self):
         logger.debug("Woelfling transition state")
         self._run("woelfling-job > woelfling.out")
-
-
-    def _forceopt(self):
+                      
+    def _forceopt(self, ex=False):
         """ Executes the commands (jobex) to perform a geometry optimization. Will resubmit if not done.
         """
         logger.debug("Force Optimization!")
         self._raw_parameters['geo_iterations'] = 100000
-        self._geo()
+                         
+        if ex:
+            self._egeo()
+        
+        else:                      
+            self._geo()
+        
         # This is where we do some light error checking
         if os.path.isfile("GEO_OPT_FAILED"):
             with open("GEO_OPT_FAILED") as error_file:
@@ -308,6 +317,40 @@ class TMcalculation:
                 logger.error("No energy file, something is wrong!")
                 self._resub = False
 
+    def _eforceopt(self):
+        self._forceopt(ex=True)
+    
+    def _egeo(self):
+        """ Executes the commands (jobex -ex) to perform a geometry optimization
+        
+        :return: True if successful, nothing otherwise
+        """
+        logger.debug("Excited state geometry optimization job")
+        logger.debug("Checking control file for proper itvc and exopt")
+        
+        control_lines = []
+        with open("control", 'r') as control_file:
+            for line in control_file:
+                control_lines.append(line)
+                         
+        with open("control", "w+") as control_file:
+            for line in control_lines:
+                if "itrvec" in line:
+                    logger.debug("Fixing itrvec in control file!")
+                    control_file.write("    itrvec    0\n")
+           
+                else:
+                    control_file.write(line)
+                                       
+        command = f"jobex -ex -c {str(self._raw_parameters['geo_iterations'])}"
+
+        if self._raw_parameters["gcart"] is not None:
+            command += f" -gcart {str(self._raw_parameters['gcart'])}"
+
+        command += f" -np {self._cores}"
+
+        self._run(command + " > jobex_ex.out")
+                         
     def _geo(self):
         """ Exceutes the commands (jobex) to perform a geometry optimization
 
@@ -357,16 +400,84 @@ class TMcalculation:
         command = f"escf -smpcpus {self._cores} > escf.out"
         self._run(command)
 
+    def _enumforce(self):
+        """ Exceutes the commands (NumForce) to perform a numforce calculation """
+        logger.debug("NumForce Job")
+        if not os.path.isdir("numforce"):        
+            self._run(f"dscf -smpcpus {self._cores} > dscf.out")
+            self._run(f"escf -smpcpus {self._cores} > escf.out")
+            self._run(f"egrad -smpcpus {self._cores} > egrad.out")
+
+        elif os.path.isdir("numforce/KraftWerk"):
+            logger.debug("Checking to see if Kraftwerk directory is cleaned up")
+            kraftwerk_files = os.listdir("numforce/KraftWerk")
+
+            deleteFiles = [f for f in kraftwerk_files if "ENVIRONMENT" in f or "lockhost." in f]
+            lockFiles = [f for f in kraftwerk_files if "lock." in f]
+            
+            jobs = [f.split('.')[1] for f in lockFiles]
+            
+            deleteFiles.extend(lockFiles)
+            # TODO add some try and except clauses around the remove and rmtree
+            for e in deleteFiles:
+                logger.debug(f"Removing file: {e}")
+                os.remove(os.path.join("numforce/KraftWerk", e))
+
+            for j in jobs:
+                if os.path.isdir(os.path.join("numforce/KraftWerk", j)):
+                    logger.debug(f"Removing directory: {j}")
+                    shutil.rmtree(os.path.join("numforce/KraftWerk", j))
+
+                if os.path.isfile(os.path.join("numforce/KraftWerk", j + ".log")):
+                    logger.debug(f"Removing file: {j}")
+                    os.remove(os.path.join("numforce/KraftWerk", j + ".log"))
+
+                for k in kraftwerk_files:
+                    if k.startswith(j + '.') and k.endswith('.err'):
+                        if os.path.isfile(os.path.join("numforce/KraftWerk", k)):
+                            logger.debug(f"Removing file:{k}")
+                            os.remove(os.path.join("numforce/KraftWerk", k))
+
+                        else:
+                            logger.debug(f"File: {k}, must have been already removed")
+                        
+                        break
+
+            logger.debug("Cleaned up the Kraftwerk directory!")
+
+        ex_state = 1
+                         
+        with open("control") as control_file:
+            for line in control_file:
+                if line.startswith("$exopt"):
+                    ex_state = int(line.split()[-1])
+                    break
+                         
+        command = f"NumForce -ex {ex_state} -central"
+        if self._raw_parameters["freeze_atoms"]:
+            command += " -frznuclei"
+
+        command += f" -mfile {constants.MFILE} > numforce.out"
+        self._run(command)
+        if not self._timer_went_off:
+            logger.info("Trying to delete KraftWerk directory")
+            try:
+                shutil.rmtree("numforce/KraftWerk")
+
+            except:
+                logger.info("I guess there is no KraftWerk to delete")
+                pass
+                         
     def _numforce(self):
         """ Exceutes the commands (NumForce) to perform a numforce calculation """
         logger.debug("NumForce Job")
         if not os.path.isdir("numforce"):        
             if self._raw_parameters["rij"]:
-                self._run(f"ridft -smpcpus {self._cores}")
-                self._run(f"rdgrad -smpcpus {self._cores}")
+                self._run(f"ridft -smpcpus {self._cores} > ridft.out")
+                self._run(f"rdgrad -smpcpus {self._cores} > rdgrad.out")
             else:
-                self._run(f"dscf -smpcpus {self._cores}")
-                self._run(f"grad -smpcpus {self._cores}")
+                self._run(f"dscf -smpcpus {self._cores} > dscf.out")
+                self._run(f"grad -smpcpus {self._cores} > grad.out")
 
         elif os.path.isdir("numforce/KraftWerk"):
             logger.debug("Checking to see if Kraftwerk directory is cleaned up")

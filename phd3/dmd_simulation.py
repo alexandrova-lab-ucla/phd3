@@ -102,7 +102,7 @@ class dmd_simulation:
             raise
 
         if self._raw_parameters["titr"]["titr on"]:
-            self._titration = titrate_protein(self._raw_parameters["titr"])
+            self._titration = titrate_protein(self._raw_parameters["titr"], self._raw_parameters["Custom protonation states"])
             self._raw_parameters = self._titration.expand_commands(self._raw_parameters)            
 
         else:
@@ -244,56 +244,93 @@ class dmd_simulation:
                         for line in tmpMovie:
                             movie.write(line)
 
-                    last_frame = utilities.last_frame("_tmpMovie.pdb")
+                    try:
+                        last_frame = utilities.last_frame("_tmpMovie.pdb")
                     
-                    #Clean up our mess
-                    logger.debug("Removing _tmpMovie.pdb file")
-                    os.remove("_tmpMovie.pdb")
-                    logger.debug(f"Removing {updated_parameters['Movie File']} file")
-                    os.remove(updated_parameters["Movie File"])
+                    except IndexError:
+                        #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
+                        #add updated_parameters to list
+                        logger.warning("Going back one iteration")
+                        if not os.path.isfile("_older_echo") or not os.path.isfile("_older_movie.pdb"):
+                            logger.error("Cannot go back a step!")
+                            raise 
+
+                        shutil.move("_older_echo", updated_parameters["Echo File"])
+                        last_frame = utilities.last_frame("_older_movie.pdb")
+                        shutil.move("_older_movie.pdb", "movie.pdb")
+                        
+                        if os.path.isfile("_last_movie.pdb"):
+                            os.remove("_last_movie.pdb")
+                        
+                        if os.path.isfile("_last_echo"):
+                            os.remove("_last_echo")
+
+                        self._titration._step -=2
+                        repeat = True
+                        self._start_time -= (2*updated_parameters["Time"])
+                    
+                    else:
+                        #Clean up our mess
+                        logger.debug("Removing _tmpMovie.pdb file")
+                        os.remove("_tmpMovie.pdb")
+                        logger.debug(f"Removing {updated_parameters['Movie File']} file")
+                        os.remove(updated_parameters["Movie File"])
+                    
+                    #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
+                    #states defined by the user)
+
+                    #TODO, check if this raises any exceptions, and if so, bo back a step
+                    try:
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+
+                    except Propka_Error:
+                        #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
+                        #add updated_parameters to list
+                        logger.warning("Going back one iteration")
+                        if not os.path.isfile("_last_echo") or not os.path.isfile("_last_movie.pdb"):
+                            logger.error("Cannot go back a step!")
+                            raise 
+
+                        shutil.move("_last_echo", updated_parameters["Echo File"])
+                        last_frame = utilities.last_frame("_last_movie.pdb")
+                        shutil.move("_last_movie.pdb", "movie.pdb")
+
+                        self._titration._step -=1
+                        self._start_time -= updated_parameters["Time"]
+                        repeat = True
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+
+                    else:
+                        if not repeat:
+                            if os.path.isfile("_older_movie.pdb"):
+                                os.remove("_older_movie.pdb")
+
+                            if os.path.isfile("_last_movie.pdb"):
+                                shutil.copy("_last_movie.pdb", "_older_movie.pdb")
+
+                            if os.path.isfile("movie.pdb"):
+                                shutil.copy("movie.pdb", "_last_movie.pdb")
+
+                            if os.path.isfile("_older_echo"):
+                                os.remove("_older_echo")
+
+                            if os.path.isfile("_last_echo"):
+                                shutil.copy("_last_echo", "_older_echo")
+
+                            if os.path.isfile(updated_parameters["Echo File"]):
+                                shutil.copy(updated_parameters["Echo File"], "_last_echo")
                     
                 else:
                     last_frame = utilities.load_pdb("initial.pdb")
+                    try:
+                        updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
                 
+                    except Propka_Error:
+                        logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")
+                                     
                 if os.path.isfile(updated_parameters['Restart File']):
                     logger.debug(f"Removing {updated_parameters['Restart File']} file")
                     os.remove(updated_parameters['Restart File'])
-
-                #TODO check to see if any of the protonation states are invalids (ie, they affect statically held protonation
-                #states defined by the user)
-                
-                #TODO, check if this raises any exceptions, and if so, bo back a step
-                try:
-                    updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
-                
-                except Propka_Error:
-                    #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
-                    #add updated_parameters to list
-                    logger.warning("Going back one iteration")
-                    if not os.path.isfile("_last_echo") or not os.path.isfile("_last_movie.pdb"):
-                        logger.error("Cannot go back a step!")
-                        raise 
-                    
-                    shutil.move("_last_echo", updated_parameters["Echo File"])
-                    last_frame = utilities.last_frame("_last_movie.pdb")
-                    shutil.move("_last_movie.pdb", updated_parameters["Movie File"])
-                    
-                    self._titration._step -=1
-                    repeat = True
-                    updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
-
-                else:
-                    if os.path.isfile("_last_movie.pdb"):
-                        os.remove("_last_movie.pdb")
-
-                    if os.path.isfile("movie.pdb"):
-                        shutil.copy("movie.pdb", "_last_movie.pdb")
-                    
-                    if os.path.isfile("_last_echo"):
-                        os.remove("_last_echo")
-                    
-                    if os.path.isfile(updated_parameters["Echo File"]):
-                        shutil.copy(updated_parameters["Echo File"], "_last_echo")
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
                 
@@ -321,8 +358,9 @@ class dmd_simulation:
 
             if not repeat:
                 self._commands.pop(list(self._commands.keys())[0])
-                # Update the new start time!
-                self._start_time += updated_parameters["Time"]
+            
+            # Update the new start time!
+            self._start_time += updated_parameters["Time"]
 
         if self._commands:
             logger.info("Did not finish all of the commands, will save the remaining commands")
@@ -421,6 +459,9 @@ class dmd_simulation:
                 line = line.split()
                 energies.append(line)
 
+        if not energies:
+            raise ValueError("No data in echo file")
+                    
         return energies
 
     @staticmethod

@@ -111,6 +111,9 @@ class controller:
 
             self._iteration += 1
 
+            if not self._stop:
+                self._parameters["last pdb"] = os.path.abspath(os.path.join(f"Iteration_{self._iteration-1}", "to_next_iteration.pdb"))
+
         if self._stop and self._iteration <= self._parameters["Max Iterations"]:
             if self._parameters["Resubmit"]:
                 submitphd.main(_cores = self._cores, _time=self._time)

@@ -367,6 +367,8 @@ class setupTMjob:
                         f"b \"{atom.lower()}\" {self._raw_parameters['basis'][atom]}")
 
         # Occupation menu settings
+#        logger.debug("Writing MOs to binary")
+#        self._state_responses["occupation"].append("atb")
         logger.debug("Switched on eht")
         self._state_responses["occupation"].append("eht")
 
@@ -1031,12 +1033,13 @@ class setupDMDjob:
             for chain in self._protein.chains:
                 for residues in chain.residues:
                     for i_atom in residues.atoms:
-                        for n_atom in residues.atoms:
-                            if i_atom is n_atom:
-                                continue
+                        for n_res in chain.residues:
+                            for n_atom in n_res.atoms:
+                                if i_atom is n_atom:
+                                    continue
 
-                            if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
-                                logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
+                                if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
+                                    logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
 
 
         if not os.path.isfile("movie"):
@@ -1204,6 +1207,26 @@ class setupDMDjob:
 
         return new_parameters
 
+    def update_from_movie(self):
+        last_frame = utilities.load_movie("movie.pdb")[-1]
+        linked_atoms = []
+        
+        for res in self._protein.sub_chain.residues:
+            for atom in res.atoms:
+                if atom.element.lower() not in constants.METALS:
+                    linked_atoms.append([atom, last_frame.get_atom(atom.label())])
+        
+        #Now we reformat the last_frame so that it is consistent...
+        last_frame.reformat_protein(relabel_protein=False)
+        for atom_pairs in linked_atoms:
+            atom_pairs[0].id = atom_pairs[1].id
+            atom_pairs[0].number = atom_pairs[1].number
+
+        for res in self._protein.sub_chain.residues:
+            res.reorder_atoms()
+
+
+
 class setupPHDjob:
 
     #call setupDMD first
@@ -1267,7 +1290,12 @@ class setupPHDjob:
         if "Exclude Atoms" in self._parameters["QM Chop"].keys():
             for atom in self._parameters["QM Chop"]["Exclude Atoms"]:
                 atom = atom.split(":")
-                track_exclude_atoms.append(protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+                if len(atom) == 3:
+                    track_exclude_atoms.append(protein.get_atom([atom[0], int(atom[1]), atom[2]]))
+                elif len(atom) == 2:
+                    track_exclude_atoms.extend(protein.get_residue([atom[0], int(atom[1])]).atoms)
+                else:
+                    logger.error(f"Invalid specification of Exclude atoms {atom}")
 
         track_substrate_chop = []
         if "Substrate Chop" in self._parameters["QM Chop"].keys():
@@ -1304,6 +1332,15 @@ class setupPHDjob:
                 atom_id = atom[2]
                 track_freeze.append(protein.get_atom([chain, res_num, atom_id]))
 
+        track_dummy = []
+        if "Dummy H" in self._parameters["QM Chop"].keys():
+            for atom in self._parameters["QM Chop"]["Dummy H"]:
+                atom = atom.split(":")
+                chain = atom[0]
+                res_num = int(atom[1])
+                atom_id = atom[2]
+                track_dummy.append(protein.get_atom([chain, res_num, atom_id]))
+
         if os.path.isdir("dmd_setup"):
             shutil.rmtree("dmd_setup")
 
@@ -1317,6 +1354,10 @@ class setupPHDjob:
         logger.info(">>>> Running Short DMD >>>>")
         logger.info("...")
         sdj.short_dmd(keep_movie=True, time=50)
+        utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
+
+        # Updates numbering of hydrogens on substrates
+        sdj.update_from_movie()
 
         self._parameters["QM Chop"]["Residues"] = [res.label() for res in track_residues]
         self._parameters["QM Chop"]["Residues"] += [f"{res[0].label()}{res[1]}-{res[2].label()}{res[3]}" for res in track_multi]
@@ -1325,10 +1366,10 @@ class setupPHDjob:
         self._parameters["QM Chop"]["Exclude Side Chain"] = [res.label() for res in track_exclude_side]
         self._parameters["QM Chop"]["Protonation"] = [[res[0].label()] + res[1:] for res in track_protonation]
         self._parameters["QM Chop"]["Freeze Atoms"] = [atom.label() for atom in track_freeze]
+        self._parameters["QM Chop"]["Dummy H"] = [atom.label() for atom in track_dummy]
 
         logger.info(">>>> Loading in Movie >>>>")
         logger.info("...")
-        utilities.make_movie("initial.pdb", self._parameters["dmd params"]["Movie File"], "movie.pdb")
         last_protein = utilities.load_movie("movie.pdb")[-1]
 
         os.chdir("..")
@@ -1344,8 +1385,8 @@ class setupPHDjob:
 
         os.chdir("..")
 
-        shutil.copy("dmd_setup/initial.pdb", "start.pdb")
         self._parameters["pdb file"] = "start.pdb"
+        protein.write_pdb(name="start.pdb")
 
         #Write out the phdinput.json
         with open("phdinput.json", "w") as param_file:

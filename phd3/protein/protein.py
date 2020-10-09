@@ -184,6 +184,10 @@ class Protein:
             self.make_bond_table()
 
     def get_atom(self, identifier):
+        if type(identifier) == str:
+            identifier = identifier.split(":")
+            identifier[1] = int(identifier[1])
+
         for chain in self.chains:
             if chain.name == identifier[0]:
                 for residue in chain.residues:
@@ -414,7 +418,7 @@ class Protein:
                         oe2 = atom
             
                 if oe1 is None or oe2 is None:
-                    logger.warn(f"Residue {residue} only has one oe1 or oe2!")
+                    self._logger.warn(f"Residue {residue} only has one oe1 or oe2!")
 
                 else:
                     if oe1.number > oe2.number:
