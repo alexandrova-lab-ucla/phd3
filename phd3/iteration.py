@@ -1000,6 +1000,9 @@ class iteration:
                 logger.info(f"[Removing] ==>> {d}")
                 shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
+        logger.info(f"[Compressing] ==>> {self.parameters['dmd params']['Movie File']}")
+        with tarfile.open(f"dmd/{self.parameters['dmd params']['Movie File']}", "w:gz") as tar:
+            tar.add(f"dmd/{self.parameters['dmd params']['Movie File']}", arcname=os.path.basename(f"dmd/{self.parameters['dmd params']['Movie File']}"))
 
         logger.info("")
         logger.info("=====================[Data  Saved]=====================")

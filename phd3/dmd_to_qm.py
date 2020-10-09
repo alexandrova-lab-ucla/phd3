@@ -72,14 +72,14 @@ def addH(protein):
     logger.debug("Removing chimeraddh.com")
     os.remove("chimeraaddh.com")
     logger.debug("Removing _temp.pdb")
-#    os.remove("_temp.pdb")
+    os.remove("_temp.pdb")
 
     new_protein = utilities.load_pdb("addh.pdb")
     new_protein.chains.append(protein.sub_chain)
 
     new_protein.reformat_protein()
     logger.debug("Removing addh.pdb")
-#    os.remove("addh.pdb")
+    os.remove("addh.pdb")
 
     #Remove all epsilon hydrogens on the histidines
     for chain in new_protein.chains:
@@ -346,7 +346,7 @@ def protein_to_coord(initial_protein, chop_params):
                 for b in res.get_atom("CA").bonds:
                     b.bonds.remove(res.get_atom("CA"))
 
-                remove_bonds_from_list(res.get_atom("CA"))
+                remove_bonds_from_list(res.get_atom("CA"), res)
                 res.get_atom("CA").bonds = []
 
                 chop_atoms.append([res.get_atom("CB"), res.get_atom("CA")])
