@@ -527,13 +527,13 @@ class setupTMjob:
         :param tmp: temporary control lines
         :return: True if successful, false otherwise
         """
-        if epsilon < 1.0:
+        if epsilon < 0.0:
             logger.error("You specified a negative value for epsilon!!")
             raise ValueError
 
         for line in tmp:
-            if "$end" in line:
-                x = tmp.index(line)
+            if "$title" in line:
+                x = tmp.index(line) + 1
                 tmp.insert(x, f"$cosmo\n   epsilon={str(epsilon)}\n")
                 return
 

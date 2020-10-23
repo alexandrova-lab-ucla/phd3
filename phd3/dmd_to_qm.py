@@ -308,10 +308,10 @@ def protein_to_coord(initial_protein, chop_params):
                 if keepatom.residue in normal_residues:
                     normal_residues.remove(keepatom.residue)
 
-                if "Exclude Sidechain" in chop_params.keys():
+                if "Exclude Side Chain" in chop_params.keys():
                     res_id = f"{chop[0][0]}:{chop[0][1]}"
-                    if res_id in chop_params["Exclude Sidechain"]:
-                        chop_params["Exclude Sidechain"].remove(res_id)
+                    if res_id in chop_params["Exclude Side Chain"]:
+                        chop_params["Exclude Side Chain"].remove(res_id)
 
         for a in atoms_to_remove:
             if a.residue.name in constants.AMINO_ACID_RESIDUES:
@@ -433,8 +433,8 @@ def protein_to_coord(initial_protein, chop_params):
             logger.error("Invalid cut specification for residue {str(cterm)}")
             raise ValueError(f"Cut specification for {str(cterm)}")
 
-    if "Exclude Sidechain" in chop_params.keys():
-        for sidechain in chop_params["Exclude Sidechain"]:
+    if "Exclude Side Chain" in chop_params.keys():
+        for sidechain in chop_params["Exclude Side Chain"]:
             sidechain = sidechain.split(":")
             assert(len(sidechain) == 2)
             chain = sidechain[0]
