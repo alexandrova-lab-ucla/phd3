@@ -379,7 +379,11 @@ def protein_to_coord(initial_protein, chop_params):
             for a in nterm.get_atom("N").bonds:
                 if a.id == "C":
                     nterm.get_atom("N").bonds.remove(a)
-                    a.bonds.remove(nterm.get_atom("N"))
+                    try:
+                        a.bonds.remove(nterm.get_atom("N"))
+    
+                    except ValueError:
+                        logger.warn(f"{nterm.get_atom("N")} not in bond list for {a}")
 
             if nterm.get_atom("N") in nterm.get_atom("CA").bonds:
                 nterm.get_atom("CA").bonds.remove(nterm.get_atom("N"))
