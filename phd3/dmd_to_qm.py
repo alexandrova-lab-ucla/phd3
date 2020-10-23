@@ -370,7 +370,7 @@ def protein_to_coord(initial_protein, chop_params):
             for a in nterm.get_atom("N").bonds:
                 if a.id == "C":
                     atoms.append(a)
-                    chop_atoms.append(nterm.get_atom("N"), a)
+                    chop_atoms.append([nterm.get_atom("N"), a])
 
             #If we don't find a "C", then we have an n-terminus...and therefore kinda pointless to cut...
 
