@@ -201,7 +201,7 @@ def protein_to_coord(initial_protein, chop_params):
                     res_num += 1
 
                 #can later include a specification of what to include here
-                linked_residues_end.append([protein.get_residue([chain1, res_num_1]), protein.get_residue([chain1, res_num_2]), cutleft, cutright])
+                linked_residues_end.append([protein.get_residue([chain1, res_num_1]), protein.get_residue([chain1, res_num_2]), cutleft.lower(), cutright.lower()])
 
 
             else:
@@ -431,7 +431,7 @@ def protein_to_coord(initial_protein, chop_params):
 
         else:
             logger.error("Invalid cut specification for residue {str(cterm)}")
-            raise ValueError("Cut specification for {str(cterm)}")
+            raise ValueError(f"Cut specification for {str(cterm)}")
 
     if "Exclude Sidechain" in chop_params.keys():
         for sidechain in chop_params["Exclude Sidechain"]:
