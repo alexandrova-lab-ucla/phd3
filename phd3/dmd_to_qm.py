@@ -456,7 +456,8 @@ def protein_to_coord(initial_protein, chop_params):
             for a in res.get_atom("CB").bonds:
                 a.bonds.remove(res.get_atom("CB"))
 
-            remove_bonds_from_list(res.get_atom("CB"))
+            print([str(a) for a in res.get_atom("CB").bonds])
+            remove_bonds_from_list(res.get_atom("CB"), res)
             chop_atoms.append([res.get_atom("CA"), res.get_atom("CB")])
 
     if "Protonation" in chop_params.keys():
