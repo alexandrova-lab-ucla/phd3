@@ -88,6 +88,7 @@ def add_to_cut_list(atom_to_keep, atom_to_replace, cut_list, remove_list):
     except ValueError:
         logger.warn(f"{atom_to_keep} not in {atom_to_replace} bonds")
 
+    # prevents the recursion from deleting our "frozen" atom
     for b in atom_to_replace.bonds:
         try:
             b.bonds.remove(atom_to_replace)
@@ -263,19 +264,8 @@ def protein_to_coord(initial_protein, chop_params):
 
             else:
                 #Normal residue specification
-                res = res.split(":")
-                assert(len(res) == 2)
-
-                chain = res[0]
-                try:
-                    res_num = int(res[1])
-            
-                except ValueError:
-                    logger.error("Invalid specification of residue")
-                    raise
-                
-                normal_residues.append(protein.get_residue([chain, res_num]))
-                atoms.extend(protein.get_residue([chain, res_num]).atoms)
+                normal_residues.append(protein.get_residue(res))
+                atoms.extend(protein.get_residue(res).atoms)
 
     #Strictly removed
     remove_atoms = []
@@ -300,14 +290,10 @@ def protein_to_coord(initial_protein, chop_params):
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
         for chop in chop_params["Substrate Chop"]:
             chop = chop.split("-")
-            keepatom = chop[0].split(":")
-            removeatom = chop[1].split(":")
             
-            assert(len(keepatom) == 3)
-            assert(len(removeatom) == 3)
-
-            keepatom = protein.get_atom([keepatom[0], int(keepatom[1]), keepatom[2]])
-            removeatom = protein.get_atom([removeatom[0], int(removeatom[1]), removeatom[2]])
+            # Actually retrives atom objects
+            keepatom = protein.get_atom(chop[0])
+            removeatom = protein.get_atom(chop[1])
 
             keepatom.bonds.remove(removeatom)
             removeatom.bonds.remove(keepatom)
@@ -462,12 +448,7 @@ def protein_to_coord(initial_protein, chop_params):
 
     if "Exclude Side Chain" in chop_params.keys():
         for sidechain in chop_params["Exclude Side Chain"]:
-            sidechain = sidechain.split(":")
-            assert(len(sidechain) == 2)
-            chain = sidechain[0]
-            resNum = int(sidechain[1])
-
-            res = protein.get_residue([chain, resNum])
+            res = protein.get_residue(sidechain)
 
             if res.name == "GLY":
                 logger.warn("Cannot exclude the sidechain of glycine!")
@@ -477,13 +458,9 @@ def protein_to_coord(initial_protein, chop_params):
 
     if "Protonation" in chop_params.keys():
         for protonation_state in chop_params["Protonation"]:
-            resID = protonation_state[0]
             state = protonation_state[1:]
-  
-            chain = resID.split(":")[0]
-            resNum = int(resID.split(":")[1])
 
-            res = protein.get_residue([chain, resNum])
+            res = protein.get_residue(protonation_state[0])
 
             if len(state) > 1:
                 if state[0] == "protonate":
@@ -522,19 +499,11 @@ def protein_to_coord(initial_protein, chop_params):
 
     if "Freeze Atoms" in chop_params.keys():
         for a in chop_params["Freeze Atoms"]:
-            a = a.split(":")
-            chain = a[0]
-            res_num = int(a[1])
-            atom_id = a[2]
-            protein.get_atom([chain, res_num, atom_id]).freeze = True
+            protein.get_atom(a).freeze = True
 
     if "Dummy H" in chop_params.keys():
         for a in chop_params["Dummy H"]:
-            a = a.split(":")
-            chain = a[0]
-            res_num = int(a[1])
-            atom_id = a[2]
-            remove_atoms.append(protein.get_atom([chain, res_num, atom_id]))
+            remove_atoms.append(protein.get_atom(a))
 
     #Make sure that the chops are not connected to each other
     for chop in chop_atoms:
@@ -603,25 +572,22 @@ def coord_to_protein(initial_protein, chop_params):
 
     #coord_lines is (coords, element)
     for atom, label in zip(coord_lines, labels):
-        label = label.split(":")
-        chain = label[0]
-        resNum = int(label[1])
-        atomID = label[2]
+        atomID = label.splite(":")[2]
 
         #HX are dummy from chops, HY are protons for protonation
         if atomID == "HX" or atomID == "HY":
             continue
 
         try:
-            if protein.get_atom([chain, resNum, atomID]).element != "Zn" and protein.get_atom([chain, resNum, atomID]).element.lower() == atom[1].lower():
-                protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
+            if protein.get_atom(label).element != "Zn" and protein.get_atom(label).element.lower() == atom[1].lower():
+                protein.get_atom(label).coords = atom[0] / constants.A_TO_BOHR
            
-            elif protein.get_atom([chain, resNum, atomID]).id.lower() == atom[1].lower():
-                protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
+            elif protein.get_atom(label).id.lower() == atom[1].lower():
+                protein.get_atom(label).coords = atom[0] / constants.A_TO_BOHR
 
             else:
                 logger.error("Label file is out of order from coord file!")
-                logger.error(f"Chain: {chain}, Res: {resNum}, atom: {atomID}")
+                logger.error(label)
                 raise ValueError("Label file")
 
         except ValueError:
@@ -631,8 +597,7 @@ def coord_to_protein(initial_protein, chop_params):
                           
     if "Dummy H" in chop_params.keys():
         for atom in chop_params["Dummy H"]:
-            atom = atom.split(":")
-            atom = protein.get_atom([atom[0], int(atom[1]), atom[2]])
+            atom = protein.get_atom(atom)
             if atom.bonds:
                 b = atom.bonds[0]
                 d = b.coords - atom.coords
