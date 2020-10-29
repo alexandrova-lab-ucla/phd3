@@ -475,6 +475,8 @@ def protein_to_coord(initial_protein, chop_params):
 
             chop_atoms.append([cterm.get_atom("N"), cterm.get_atom("CA")])
 
+            
+
         elif linked_residues[3] == 'n':
             #chop between c and n to make aldehyde
             for a in cterm.get_atom("C").bonds:
@@ -498,9 +500,12 @@ def protein_to_coord(initial_protein, chop_params):
             if res.name == "GLY":
                 logger.warn("Cannot exclude the sidechain of glycine!")
                 continue
+            try:
+                res.get_atom("CA").bonds.remove(res.get_atom("CB"))
+                res.get_atom("CB").bonds.remove(res.get_atom("CA"))
 
-            res.get_atom("CA").bonds.remove(res.get_atom("CB"))
-            res.get_atom("CB").bonds.remove(res.get_atom("CA"))
+            except ValueError:
+                print(f"CA and CB no in bond list residue {res}")
 
             for a in res.get_atom("CB").bonds:
                 a.bonds.remove(res.get_atom("CB"))
