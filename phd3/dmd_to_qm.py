@@ -365,14 +365,46 @@ def protein_to_coord(initial_protein, chop_params):
 
     for linked_residues in linked_residues_end:
         nterm = linked_residues[0]
-        
+       
         if linked_residues[2] == 'c':
             for a in nterm.get_atom("N").bonds:
                 if a.id == "C":
                     atoms.append(a)
+                    # I don't know why it gets added to this list, but there must be a good reason...
+                    if a in remove_atoms:
+                        remove_atoms.remove(a)
                     chop_atoms.append([nterm.get_atom("N"), a])
+                    break
 
+            else:
+                logger.warn(f"Could not cut {linked_residues[0]} properly, could be N-terminal")
             #If we don't find a "C", then we have an n-terminus...and therefore kinda pointless to cut...
+
+        elif linked_residues[2] == 'a':
+            for a in nterm.get_atom("N").bonds:
+                if a.id == "C":
+                    nterm.get_atom("N").bonds.remove(a)
+                    try:
+                        a.bonds.remove(nterm.get_atom("N"))
+                    
+                    except ValueError:
+                        logger.warn(f"{nterm.get_atom('N')} not in bond list for {a}")
+            
+            if nterm.get_atom("CA") in nterm.get_atom("C").bonds:
+                nterm.get_atom("C").bonds.remove(nterm.get_atom("CA"))
+                nterm.get_atom("CA").bonds.remove(nterm.get_atom("C"))
+
+            else:
+                logger.warn(f"CA not in C bonds in residue {nterm}")
+
+            for b in nterm.get_atom("CA").bonds:
+                b.bonds.remove(nterm.get_atom("CA"))
+
+            # Cut this stuff out
+            remove_bonds_from_list(nterm.get_atom("CA"), nterm)
+            nterm.get_atom("CA").bonds = []
+            chop_atoms.append([nterm.get_atom("C"), nterm.get_atom("CA")])
+
 
         elif linked_residues[2] == 'n':
             #cut residue from other residues first
@@ -401,14 +433,13 @@ def protein_to_coord(initial_protein, chop_params):
             nterm.get_atom("N").bonds = []
             chop_atoms.append([nterm.get_atom("CA"), nterm.get_atom("N")])
 
-
         else:
             logger.error("Invalid cut specification for residue {str(nterm)}")
             raise ValueError("Cut specification for {str(nterm)}")
 
         cterm = linked_residues[1]
 
-        if linked_residues[3] == 'c':
+        if linked_residues[3] == 'a':
             #chop between CA and C to make CRH2
             for a in cterm.get_atom("C").bonds:
                 if a.id == "N":
@@ -425,6 +456,24 @@ def protein_to_coord(initial_protein, chop_params):
             cterm.get_atom("C").bonds = []
 
             chop_atoms.append([cterm.get_atom("CA"), cterm.get_atom("C")])
+
+        elif linked_residues[3] == 'c':
+            # chop between n and c and keep the NH2
+            for a in cterm.get_atom("C").bonds:
+                if a.id == "N":
+                    cterm.get_atom("C").bonds.remove(a)
+                    a.bonds.remove(cterm.get_atom("C"))
+
+            cterm.get_atom("N").bonds.remove(cterm.get_atom("CA"))
+            cterm.get_atom("CA").bonds.remove(cterm.get_atom("N"))
+
+            for b in cterm.get_atom("CA").bonds:
+                b.bonds.remove(cterm.get_atom("CA"))
+
+            remove_bonds_from_list(cterm.get_atom("CA"), cterm)
+            cterm.get_atom("CA").bonds = []
+
+            chop_atoms.append([cterm.get_atom("N"), cterm.get_atom("CA")])
 
         elif linked_residues[3] == 'n':
             #chop between c and n to make aldehyde
