@@ -439,7 +439,7 @@ def protein_to_coord(initial_protein, chop_params):
 
         cterm = linked_residues[1]
 
-        if linked_residues[3] == 'a':
+        if linked_residues[3] == 'c':
             #chop between CA and C to make CRH2
             for a in cterm.get_atom("C").bonds:
                 if a.id == "N":
@@ -457,7 +457,7 @@ def protein_to_coord(initial_protein, chop_params):
 
             chop_atoms.append([cterm.get_atom("CA"), cterm.get_atom("C")])
 
-        elif linked_residues[3] == 'c':
+        elif linked_residues[3] == 'a':
             # chop between n and c and keep the NH2
             for a in cterm.get_atom("C").bonds:
                 if a.id == "N":
