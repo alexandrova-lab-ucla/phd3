@@ -572,7 +572,7 @@ def coord_to_protein(initial_protein, chop_params):
 
     #coord_lines is (coords, element)
     for atom, label in zip(coord_lines, labels):
-        atomID = label.splite(":")[2]
+        atomID = label.split(":")[2]
 
         #HX are dummy from chops, HY are protons for protonation
         if atomID == "HX" or atomID == "HY":

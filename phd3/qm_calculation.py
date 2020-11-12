@@ -27,19 +27,13 @@ __all__ = [
     'TMcalculation'
 ]
 
-"""Turbomole Calculation Class. Runs a TURBOMOLE job based off of parameters in definput.json"""
 class TMcalculation:
-    """
-    Handles a turbomole job. Sets up the job if necessary and then executes it.
-    Ensures the TM is properly set up (in terms of the paths)
-    """
-
     def __init__(self, cores, run_dir: str='./', time=-1, coord=None, parameters: dict=None):
         logger.debug("Beginning Calculation")
 
         logger.debug("Initializing variables")
-        self._submit_directory = os.getcwd()
-        self._scratch_directory = run_dir
+        self._submit_directory = os.path.abspath(os.getcwd())
+        self._scratch_directory = os.path.abspath(run_dir)
         self._config = utilities.load_phd_config()
         self._turbodir = self._config["PATHS"]['TURBODIR']
         self._cores = cores
@@ -51,18 +45,6 @@ class TMcalculation:
         #Start the general signal for sigUSR1
         #This will call function calculation_alarm_handler if SIGUSR1 is sent to the node
         signal.signal(signal.SIGUSR1, self.calculation_alarm_handler)
-
-        # Want to make sure that we make the scratch directory!!
-        try:
-            logger.debug(f"Checking if scratch directory: {self._scratch_directory} is created")
-            if not os.path.isdir(self._scratch_directory) and os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
-                logger.info(f"Creating scratch directory: {self._scratch_directory}")
-                os.mkdir(self._scratch_directory)
-
-        except OSError:
-            logger.warning("Could not make scratch directory : {self._scratch_directory}")
-            logger.warning("I will run job in the current directory.")
-            self._scratch_directory = './'
 
         # We need to make sure that we have some parameters for this job!
         if parameters is None:
@@ -116,11 +98,7 @@ class TMcalculation:
                 for f in files:
                     if os.path.splitext(f)[-1].lower() == ".xyz":
                         logger.info(f"Found an .xyz file to use: {f}, will convert to coord")
-                        with Popen(f'x2t {f} > coord', shell=True, universal_newlines=True, stdin=PIPE,
-                                   stdout=PIPE, stderr=PIPE, bufsize=1, env=os.environ) as shell:
-                            while shell.poll() is None:
-                                logger.info(shell.stdout.readline().strip())
-                                logger.info(shell.stderr.readline().strip())
+                        utilities.xys_to_coord(f)
                         self._coord_file = os.path.join(self._submit_directory, "coord")
                         break
 
@@ -130,77 +108,35 @@ class TMcalculation:
                     raise FileNotFoundError("coord")
 
         else:
-            # we have been passed coordinates, write a coord file
-            logger.debug("Coords passes as a parameter.")
             self._coords = coord
 
         # At this point we will set up the turbomole job if it is not already setup (or more importantly, the control file!)
-        if os.path.isfile("control"):
-            logger.debug("Control file exists, I am trusting that it has been set up properly")
-
-        else:
+        if not os.path.isfile("control"):
             logger.debug("Control file does not exist. Attempting to run setupturbomole.py")
-            try:
-                stm = setupTMjob(self._raw_parameters)
-
-            except:
-                logger.exception("Could not setup the turbomole job!")
-                raise
-
-        # We have a coord file, a parameter file, and define has been run
-        # The turbomole environment has been setup, we are now ready to execute the commands!
+            stm = setupTMjob(self._raw_parameters)
 
         #Remove the stop file if it exists right now, otherwise we will have issues
-        if os.path.isfile(os.path.join(os.path.abspath(self._submit_directory), "stop")):
+        if os.path.isfile(os.path.join(self._submit_directory, "stop")):
             logger.warning("Stop file exists before job has run")
             logger.warning("Removing stop file and continuing")
-            try:
-                os.remove(os.path.join(os.path.abspath(self._submit_directory), "stop"))
-
-            except OSError:
-                logger.exception("Error removing file!")
-                logger.warning("Will try to continue despite having a stop file present, possibly...")
+            os.remove(os.path.join(self._submit_directory, "stop"))
 
         #We now want to transfer all of the files from this directory to the scratch directory if a diff. directory
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
-            #For better distinshin
+        if self._scratch_directory != self._submit_directory:
             self._scratch_directory = os.path.join(self._scratch_directory, os.path.basename(self._submit_directory))
-            if not os.path.isdir(self._scratch_directory):
-                os.mkdir(self._scratch_directory)
+            utilities.copy_directories(self._submit_directory, self._scratch_directory)
 
-            logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
-            self._src_files = os.listdir(self._submit_directory)
-            for file_name in self._src_files:
-                skip = False
-                for ignore in constants.IGNORE_FILES:
-                    if ignore in file_name:
-                        skip = True
-                        break
-                if skip:
-                    continue
+            os.chdir(self._scratch_directory)
 
-                full_file_name = os.path.join(self._submit_directory, file_name)
-                dest_file_name = os.path.join(self._scratch_directory, file_name)
-                if file_name.startswith("."):
-                    #These are hidden files...can be quite corrupt
-                    continue
+        # Check for MOs in tar.gz format
+        for mo_file in constants.MO_FILES:
+            if os.path.isfile(f"{mo_file}.tar.gz"):
+                logger.info(f"[Untaring] ==>> {f}")
+                with tarfile.open(f"{mo_file}.tar.gz", "r:gz") as tar:
+                    tar.extractall()
 
-                try:
-                    if os.path.isfile(full_file_name):
-                        shutil.copy(full_file_name, dest_file_name)
-                    
-                    elif os.path.isdir(full_file_name):
-                        if os.path.isdir(dest_file_name):
-                            shutil.rmtree(dest_file_name)
-                                 
-                        shutil.copytree(full_file_name, dest_file_name)
-                
-                except:
-                    logger.warn(f"{file_name} suddently vanished in thin air...")
+                os.remove(f"{mo_file}.tar.gz")
 
-
-            os.chdir(os.path.abspath(self._scratch_directory))
-                             
         switcher = {
             "numforce": self._numforce,
             "nf" : self._numforce,
@@ -241,30 +177,10 @@ class TMcalculation:
             raise
 
         #Now we copy the files back!
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
-            logger.info(f"Copying files from {os.path.abspath(self._scratch_directory)} to {os.path.abspath(self._submit_directory)}")
-            self._src_files = os.listdir(self._scratch_directory)
-            for file_name in self._src_files:
-                full_file_name = os.path.join(self._scratch_directory, file_name)
-                dest_file_name = os.path.join(self._submit_directory, file_name)
-                try:
-                    if os.path.isfile(full_file_name):
-                        shutil.copy(full_file_name, dest_file_name)
-                    
-                    # Want to remove and then copy over a directory and everything in it!
-                    elif os.path.isdir(full_file_name):
-                        if os.path.isdir(dest_file_name):
-                            shutil.rmtree(dest_file_name)
-                        
-                        shutil.copytree(full_file_name, dest_file_name)
-       
-                except:
-                    logger.warn(f"{file_name} suddently vanished into thin air...")
-
-            os.chdir(os.path.abspath(self._submit_directory))
-            #Need this for the Optimization directory specifically
-            shutil.rmtree(os.path.abspath(self._scratch_directory))
-
+        if self._scratch_directory != self._submit_directory:
+            utilities.copy_directories(self._scratch_directory, self._submit_directory)
+            os.chdir(self._submit_directory)
+            shutil.rmtree(self._scratch_directory)
 
         self.clean_up()
         logger.debug("Finished Calculation")
@@ -321,10 +237,6 @@ class TMcalculation:
         self._forceopt(ex=True)
     
     def _egeo(self):
-        """ Executes the commands (jobex -ex) to perform a geometry optimization
-        
-        :return: True if successful, nothing otherwise
-        """
         logger.debug("Excited state geometry optimization job")
         logger.debug("Checking control file for proper itvc and exopt")
         
@@ -352,10 +264,6 @@ class TMcalculation:
         self._run(command + " > jobex_ex.out")
                          
     def _geo(self):
-        """ Exceutes the commands (jobex) to perform a geometry optimization
-
-        :return: True if successful, nothing otherwise
-        """
         logger.debug("Geometry Optimization Job")
         logger.debug("Checking control file for proper itvc!")
 
@@ -385,13 +293,11 @@ class TMcalculation:
         self._run(command + " > jobex.out")
 
     def _singlepoint(self):
-        """ Exceutes the commands (dscf/ridft) to perform a singlepoint calculation """
         logger.debug("Single Point Job")
         command = "dscf" if not self._raw_parameters["rij"] else "ridft"
         self._run(command + f" -smpcpus {self._cores} > {command}.out")
 
     def _escf(self):
-        """ Executes the command escf to perform a excited state calculation """
         logger.debug("Excited state job")
         if not os.path.isfile("energy"):
             logger.warning("Energy not found, you should perform a single point calculation first!")
@@ -401,7 +307,6 @@ class TMcalculation:
         self._run(command)
 
     def _enumforce(self):
-        """ Exceutes the commands (NumForce) to perform a numforce calculation """
         logger.debug("NumForce Job")
         if not os.path.isdir("numforce"):        
             self._run(f"dscf -smpcpus {self._cores} > dscf.out")
@@ -574,22 +479,18 @@ class TMcalculation:
 
 
     def calculation_alarm_handler(self, signum, frame):
-        """
-        Called if time is running out on TURBOMOLE GEO calculation.
-        Creates a stop file to try and hault TURBOMOLE
-        """
         logger.warning("Creating stop file!")
         self._timer_went_off = True
 
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
+        if elf._scratch_directory != self._submit_directory:
             # This is just in case TURBOMOLE can't stop in time, we just copy everything over as a backup
             logger.warning("Creating a trun_backup in the submit directory")
-            backup_dir = os.path.join(os.path.abspath(self._submit_directory), 'trun_backup')
+            backup_dir = os.path.join(self._submit_directory, 'trun_backup')
             if os.path.isdir(backup_dir):
                 logger.warning("Removing backup directory already present in submit directory")
                 shutil.rmtree(backup_dir)
                          
-            logger.warning(f"Copying files from {os.path.abspath(self._scratch_directory)} to {backup_dir}")             
+            logger.warning(f"Copying files from {self._scratch_directory} to {backup_dir}")             
             try:
                 shutil.copytree(self._scratch_directory, backup_dir)
 
@@ -609,10 +510,6 @@ class TMcalculation:
         signal.alarm(0)
 
     def clean_up(self):
-        """
-        Removes any extra files that are not necessary after a turbomole job execution (specifically any slave/node
-        files) and the trun_backup directory
-        """
         logger.debug("Cleaning up directory")
         files = [f for f in os.listdir('.') if os.path.isfile(os.path.join('.', f))]
         for f in files:
@@ -655,13 +552,6 @@ class TMcalculation:
     
     @staticmethod
     def create_MFILE(cores: int):
-        """Creates an MFILE that lists the hostnames for TURBOMOLE
-
-        Checks the various types of job schedulers (that are supported) and generates the appropriate files
-        If an unknown scheduler is used, then it uses the default hostname
-
-        :param cores: Number of cores
-        """
         logger.debug(f"Creating MFILE for {cores} cores")
 
         host_file_lines = ""
@@ -720,15 +610,6 @@ class TMcalculation:
 
     @staticmethod
     def setup_turbomole_env_parallel(cores: int, para_arch: str, scratch_directory: str, turbodir: str):
-        """
-        Sets up the TURBOMOLE environment. Ensures that the paths are extended correctly in order to run any TURBOMOLE
-        commands including jobex, define, NumForce. It also sets up the parallel environment for TURBOMOLE
-
-        :param cores: Number of cores TURBOMOLE has access to
-        :param para_arch: Parallelization protocol to use
-        :param scratch_directory: Scratch directory TURBOMOLE has access to
-        :param turbodir: Directory where TURBOMOLE is installed
-        """
         TMcalculation.create_MFILE(cores)
         
         if "TURBOTMPDIR" in os.environ and "PARA_ARCH" in os.environ and "PARNODES" in os.environ:

@@ -42,27 +42,14 @@ class dmd_simulation:
     def __init__(self, cores: int = 1, run_dir: str='./', time=-1, pro: protein.Protein=None, parameters: dict=None):
 
         logger.debug("Initializing variables")
-        self._submit_directory = os.getcwd()
-        self._scratch_directory = run_dir
+        self._submit_directory = os.path.abspath(os.getcwd())
+        self._scratch_directory = os.path.abspath(run_dir)
         self._config = utilities.load_phd_config()
         self._cores = cores
         self._time_to_run = time
         self._timer_went_off = False
         self._start_time = 0
         self._resub = False
-
-
-        # Want to make sure that we make the scratch directory!!
-        try:
-            logger.debug(f"Checking if scratch directory: {self._scratch_directory} is created")
-            if not os.path.isdir(self._scratch_directory) and os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
-                logger.info(f"Creating scratch directory: {self._scratch_directory}")
-                os.mkdir(self._scratch_directory)
-
-        except OSError:
-            logger.warning("Could not make scratch directory : {self._scratch_directory}")
-            logger.warning("I will run job in the current directory.")
-            self._scratch_directory = './'
 
         utilities.setup_dmd_environ()
 
@@ -108,7 +95,6 @@ class dmd_simulation:
         else:
             self._titration = None
 
-        # TODO check for any exceptions raised from setupDMDjob
         if pro is None:
             if not os.path.isfile("initial.pdb"):
                 logger.debug("initial.pdb not found, will try setting up from scratch")
@@ -120,93 +106,13 @@ class dmd_simulation:
             sj = setupDMDjob(parameters=self._raw_parameters, pro=pro)
             sj.full_setup()
 
-        if os.path.isfile(self._raw_parameters["Echo File"]):
-            with open(self._raw_parameters["Echo File"]) as echofile:
-                lines = []
-                for line in echofile:
-                    lines.append(line)
+        self.update_start_time()
+        self.update_commands()
 
-                last_line = lines[-1].split()
-                self._start_time = int(float(last_line[0]))
-                logger.debug(f"Last recorded time: {self._start_time}")
-
-        if self._raw_parameters["Remaining Commands"]:
-            self._commands = self._raw_parameters["Remaining Commands"].copy()
-
-            if len(self._raw_parameters["Commands"]) != 0:
-                all_commands = self._raw_parameters["Commands"].copy()
-
-                remove = len(self._commands)
-                for i in range(remove):
-                    all_commands.pop(list(self._commands.keys())[-1])
-
-                time_elapsed = 0
-                for step in all_commands:
-                    if "Time" in all_commands[step].keys():
-                        time_elapsed += all_commands[step]["Time"]
-
-                    else:
-                        time_elapsed += self._raw_parameters["Time"]
-
-                logger.debug(f"Total time completed: {time_elapsed}")
-
-                diff = self._start_time - time_elapsed
-                logger.debug(f"We are off by: {diff}")
-
-                if "Time" in self._commands[list(self._commands.keys())[0]].keys():
-                    new_time = self._commands[list(self._commands.keys())[0]]["Time"] - diff
-
-                else:
-                    new_time = self._raw_parameters["Time"] - diff
-
-                if new_time < 0:
-                    logger.error("Somehow we moved onto a later step then what is reported in remaining calculations.")
-                    raise ValueError("Invalid time")
-
-                logger.debug(f"Setting new time for the first step to: {new_time}")
-                self._commands[list(self._commands.keys())[0]]["Time"] = new_time
-
-            else:
-                logger.warning("Unknown how many steps prior to this one!")
-                logger.warning("Will just start continue from where we left off then")
-
-        elif self._raw_parameters["Commands"]:
-            # There are no remaining commands, so continue like normal more or less
-            self._commands = self._raw_parameters["Commands"].copy()
-
-        else:
-            self._commands = {"1": {}}
-            logger.debug("Commands passed, using those")
-
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
+        if self._scratch_directory != self._submit_directory:
             self._scratch_directory = os.path.join(self._scratch_directory, os.path.basename(self._submit_directory))
-            if not os.path.isdir(self._scratch_directory):
-                os.mkdir(self._scratch_directory)
-
-            logger.info(f"Copying files from {os.path.abspath(self._submit_directory)} to {os.path.abspath(self._scratch_directory)}")
-            self._src_files = os.listdir(self._submit_directory)
-            for file_name in self._src_files:
-                skip = False
-                for ignore in constants.IGNORE_FILES:
-                    if ignore in file_name:
-                        skip = True
-                        break
-                
-                if skip:
-                    continue
-                
-                full_file_name = os.path.join(self._submit_directory, file_name)
-                dest_file_name = os.path.join(self._scratch_directory, file_name)
-                if os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, dest_file_name)
-
-                elif os.path.isdir(full_file_name):
-                    if os.path.isdir(dest_file_name):
-                        shutil.rmtree(dest_file_name)
-
-                    shutil.copytree(full_file_name, dest_file_name)
-
-            os.chdir(os.path.abspath(self._scratch_directory))
+            utilities.copy_directories(self._submit_directory, self._scratch_directory)
+            os.chdir(self._scratch_directory)
 
         # We can arm the timer
         if self._time_to_run != -1:
@@ -386,25 +292,10 @@ class dmd_simulation:
             json.dump(self._raw_parameters, dmdinput, indent=4)
 
 
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
-            logger.info(
-                f"Copying files from {os.path.abspath(self._scratch_directory)} to {os.path.abspath(self._submit_directory)}")
-            self._src_files = os.listdir(self._scratch_directory)
-            for file_name in self._src_files:
-                full_file_name = os.path.join(self._scratch_directory, file_name)
-                dest_file_name = os.path.join(self._submit_directory, file_name)
-                if os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, dest_file_name)
-
-                # Want to remove and then copy over a directory and everything in it!
-                elif os.path.isdir(full_file_name):
-                    if os.path.isdir(dest_file_name):
-                        shutil.rmtree(dest_file_name)
-
-                    shutil.copytree(full_file_name, dest_file_name)
-
-            os.chdir(os.path.abspath(self._submit_directory))
-            shutil.rmtree(os.path.abspath(self._scratch_directory))
+        if self._scratch_directory != self._submit_directory:
+            utilities.copy_directories(self._scratch_directory, self._submit_directory)
+            os.chdir(self._submit_directory)
+            shutil.rmtree(self._scratch_directory)
 
         if self._resub:
             logger.info("Resubmitting the job!")
@@ -520,15 +411,73 @@ class dmd_simulation:
             json.dump(self._commands, rc)
 
         logger.debug("Checking if scratch directory is different from submit directory")
-        if os.path.abspath(self._scratch_directory) != os.path.abspath(self._submit_directory):
+        if self._scratch_directory != self._submit_directory:
             logger.warning("Creating dmd_backup in the submit directory")
-            backup_dir = os.path.join(os.path.abspath(self._submit_directory), 'dmd_backup')
+            backup_dir = os.path.join(self._submit_directory, 'dmd_backup')
             if os.path.isdir(backup_dir):
                 logger.warning("Removing backup directory already present in the submit directory")
                 shutil.rmtree(backup_dir)
 
-            logger.warning(f"Copying files from {os.path.abspath(self._scratch_directory)} to {backup_dir}")
+            logger.warning(f"Copying files from {self._scratch_directory} to {backup_dir}")
             shutil.copytree(self._scratch_directory, backup_dir)
 
         logger.info("Turning off alarm")
         signal.alarm(0)
+
+    def update_start_time(self):
+        if os.path.isfile(self._raw_parameters["Echo File"]):
+            with open(self._raw_parameters["Echo File"]) as echofile:
+                lines = []
+                for line in echofile:
+                    lines.append(line)
+
+                last_line = lines[-1].split()
+                self._start_time = int(float(last_line[0]))
+                logger.debug(f"Last recorded time: {self._start_time}")
+
+    def update_commands(self):
+        if self._raw_parameters["Remaining Commands"]:
+            self._commands = self._raw_parameters["Remaining Commands"].copy()
+
+            if self._raw_parameters["Commands"]:
+                all_commands = self._raw_parameters["Commands"].copy()
+                remove = len(self._commands)
+                for i in range(remove):
+                    all_commands.pop(list(self._commands.keys())[-1])
+
+                time_elapsed = 0
+                for step in all_commands:
+                    if "Time" in all_commands[step].keys():
+                        time_elapsed += all_commands[step]["Time"]
+
+                    else:
+                        time_elapsed += self._raw_parameters["Time"]
+
+                logger.debug(f"Total time completed: {time_elapsed}")
+                diff = self._start_time - time_elapsed
+                logger.debug(f"We are off by: {diff}")
+
+                if "Time" in self._commands[list(celf._commands.keys())[0]].keys():
+                    new_time = self._commands[list(self._commands.keys())[0]]["Time"] - diff
+
+                else:
+                    new_time = self._raw_parameters["Time"] - diff
+
+                if new_time < 0:
+                    logger.error("Somew how we moved onto a later step then what is reported in remaining calculations.")
+                    raise ValueError("Invalid time")
+
+                
+                logger.debug(f"Setting enw time for the first step to: {new_time}")
+                self._commands[list(self._commands.keys())[0]]["Time"] = new_time
+
+            else:
+                logger.warning("Unknown how many steps prior to this one!")
+            
+        elif self._raw_parameters["Commands"]:
+            self._commands = self._raw_parameters["Commands"].copy()
+
+        else:
+            self._commands = {"1": {}}
+            
+                

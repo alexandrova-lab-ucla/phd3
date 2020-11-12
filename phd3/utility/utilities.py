@@ -41,7 +41,9 @@ __all__=[
     'valid_dmd_parameters',
     'create_config',
     'load_phd_config',
-    'quote_me'
+    'copy_directories',
+    'quote_me',
+    'xyz_to_coord'
 ]
 
 logger = logging.getLogger(__name__)
@@ -897,3 +899,44 @@ def print_header():
     main_logger.info("")
     main_logger.info("==============================================================================")
     main_logger.info("")
+
+def copy_directories(src, dst):
+    if not os.path.isdir(dst):
+        logger.info(f"Making directory {dst}")
+        os.mkdir(dst)
+
+    logger.info(f"Copying files from {os.path.abspath(src)} to {os.path.abspath(dst)}")
+    src_files = os.listdir(src)
+    for file_name in src_files:
+        skip = False
+        for ignore in constants.IGNORE_FILES:
+            if ignore in file_name:
+                skip = True
+                break
+
+        if skip or file_name.startswith("."):
+            continue
+        
+        src_file_name = os.path.join(src, file_name)
+        dst_file_name = os.path.join(dst, file_name)
+        try:
+            if os.path.isfile(src_file_name):
+                shutil.copy(src_file_name, dst_file_name)
+
+            elif os.path.isdir(src_file_name):
+                if os.path.isir(dst_file_name):
+                    shutil.rmtree(dst_file_name)
+
+                shutil.copytree(src_file_name, dst_file_name)
+
+        except:
+            logger.warn(f"{file_name} suddently vanished in this air...")
+
+def xyz_to_coord(xyz_file):
+    with Popen(f"x2t {xyz_file} > coord", shell=True, universal_newlines=True, stdin=PIPE,
+            stdout=PIPE, stderr=PIPE, bufsize=1, env=os.environ) as shell:
+        while shell.poll() is None:
+            logger.info(shell.stdout.readline().strip())
+            logger.info(shell.stderr.readline().strip())
+
+
