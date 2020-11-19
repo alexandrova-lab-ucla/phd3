@@ -725,7 +725,7 @@ class iteration:
                 self.qm_sp_energies.append(qm_calculation.TMcalculation.get_energy(cycle=1))
             
             except IndexError:
-                logger.error("Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
+                logger.error(f"Singlepoint could not converge in {qm_params['scf']['iter']*2} scf cycles")
                 logger.error("Structure may be very weird, continuing to next structure")
                 self.qm_sp_energies.append(0.0)
 

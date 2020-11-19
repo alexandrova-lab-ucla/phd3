@@ -123,6 +123,7 @@ class TMcalculation:
 
         #We now want to transfer all of the files from this directory to the scratch directory if a diff. directory
         if self._scratch_directory != self._submit_directory:
+            logger.info(f"Copying file from {self._submit_directory} to {self._scratch_directory}")
             self._scratch_directory = os.path.join(self._scratch_directory, os.path.basename(self._submit_directory))
             utilities.copy_directories(self._submit_directory, self._scratch_directory)
 
@@ -482,7 +483,7 @@ class TMcalculation:
         logger.warning("Creating stop file!")
         self._timer_went_off = True
 
-        if elf._scratch_directory != self._submit_directory:
+        if self._scratch_directory != self._submit_directory:
             # This is just in case TURBOMOLE can't stop in time, we just copy everything over as a backup
             logger.warning("Creating a trun_backup in the submit directory")
             backup_dir = os.path.join(self._submit_directory, 'trun_backup')
