@@ -98,7 +98,7 @@ class TMcalculation:
                 for f in files:
                     if os.path.splitext(f)[-1].lower() == ".xyz":
                         logger.info(f"Found an .xyz file to use: {f}, will convert to coord")
-                        utilities.xys_to_coord(f)
+                        utilities.xyz_to_coord(f)
                         self._coord_file = os.path.join(self._submit_directory, "coord")
                         break
 

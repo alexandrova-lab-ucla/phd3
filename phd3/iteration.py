@@ -1005,10 +1005,13 @@ class iteration:
                 logger.info(f"[Removing] ==>> {d}")
                 shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
+        if os.path.isfile(f"dmd/{self.parameters['dmd params']['Movie File']}"):
+            logger.info(f"[Compressing] ==>> {self.parameters['dmd params']['Movie File']}")
+            with tarfile.open(f"dmd/{self.parameters['dmd params']['Movie File']}.tar.gz", "w:gz") as tar:
+                tar.add(f"dmd/{self.parameters['dmd params']['Movie File']}", arcname=os.path.basename(f"dmd/{self.parameters['dmd params']['Movie File']}"))
 
-        logger.info(f"[Compressing] ==>> {self.parameters['dmd params']['Movie File']}")
-        with tarfile.open(f"dmd/{self.parameters['dmd params']['Movie File']}.tar.gz", "w:gz") as tar:
-            tar.add(f"dmd/{self.parameters['dmd params']['Movie File']}", arcname=os.path.basename(f"dmd/{self.parameters['dmd params']['Movie File']}"))
+            logger.info(f"[Removing] ==>> {self.parameters['dmd params']['Movie File']}")
+            os.remove(f"dmd/{self.parameters['dmd params']['Movie File']}")
 
         for mo_file in constants.MO_FILES:
             mo_file = os.path.join("Optimization", mo_file)
@@ -1016,6 +1019,9 @@ class iteration:
                 logger.info(f"[Compressing] ==>> {mo_file}")
                 with tarfile.open(f"{mo_file}.tar.gz", "w:gz") as tar:
                     tar.add(mo_file, arcname=os.path.basename(mo_file))
+                
+                logger.info(f"[Removing] ==>> {mo_file}")
+                os.remove(mo_file)
 
         logger.info("")
         logger.info("=====================[Data  Saved]=====================")
