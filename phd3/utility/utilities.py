@@ -924,7 +924,7 @@ def copy_directories(src, dst):
                 shutil.copy(src_file_name, dst_file_name)
 
             elif os.path.isdir(src_file_name):
-                if os.path.isir(dst_file_name):
+                if os.path.isdir(dst_file_name):
                     shutil.rmtree(dst_file_name)
 
                 shutil.copytree(src_file_name, dst_file_name)
