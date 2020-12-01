@@ -22,7 +22,6 @@ import phd3.protein as pro
 logger = logging.getLogger(__name__)
 
 _all__ = [
-        'addH',
         'protein_to_coord',
         'coord_to_protein'
         ]
@@ -58,22 +57,6 @@ def remove_bonds_from_list(atom, remove_list, residue=None):
                     remove_list.append(a)
                     remove_bonds_from_list(a, remove_list, residue)
 
-def add_proton(atom, ID="HY"):
-    vectors = []
-    for a in atom.bonds:
-        vectors.append(a.coords - atom.coords)
-        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
-
-    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-    direction = -1.1* sum(vectors)
-
-    new_proton = pro.atom.Atom(element = "H", coords = atom.coords + direction, id=ID, number=20)
-    
-    #Update the bond lists etc...
-    atom.add_bond(new_proton)
-    atom.residue.add_atom(new_proton)
-    
-    return new_proton
 
 def add_to_cut_list(atom_to_keep, atom_to_replace, cut_list, remove_list):
     try:
@@ -102,94 +85,6 @@ def add_to_cut_list(atom_to_keep, atom_to_replace, cut_list, remove_list):
     cut_list.append([atom_to_keep, atom_to_replace])
 
 
-
-def addH(protein):
-    phd_config = utilities.load_phd_config()
-    chimera_path = phd_config["PATHS"]["chimera"]
-
-    protein.reformat_protein()
-    protein.remove_h()
-    protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
-
-    with open("chimeraaddh.com", "w") as comfile:
-        comfile.write("open _temp.pdb\n")
-        comfile.write("addh\n")
-        comfile.write("write format pdb 0 addh.pdb\n")
-        comfile.write("stop\n")
-
-    try:
-        with Popen(f"{os.path.join(chimera_path, 'chimera')} --nogui chimeraaddh.com",
-                stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
-            while shell.poll() is None:
-                logger.debug(shell.stdout.readline().strip())
-
-    except OSError:
-        logger.exception("Error calling chimera")
-        raise
-
-    if not os.path.isfile("addh.pdb"):
-        logger.exception("Could not call chimera, check your path")
-        raise OSError("chimera")
-
-    logger.debug("Removing chimeraddh.com")
-    os.remove("chimeraaddh.com")
-    logger.debug("Removing _temp.pdb")
-    os.remove("_temp.pdb")
-
-    new_protein = utilities.load_pdb("addh.pdb")
-    new_protein.chains.append(protein.sub_chain)
-
-    new_protein.reformat_protein()
-    logger.debug("Removing addh.pdb")
-    os.remove("addh.pdb")
-
-    #Remove all epsilon hydrogens on the histidines
-    for chain in new_protein.chains:
-        for res in chain.residues:
-            if res.name.upper() == "HIS":
-                epsilon_nitrogen = res.get_atom("NE2")
-                deleted_hydrogen = False
-                for atom in epsilon_nitrogen.bonds:
-                    if atom.element.lower() == "h":
-                        #DELETE THIS ATOM, no good two-timer
-                        epsilon_nitrogen.bonds.remove(atom)
-                        res.atoms.remove(atom)
-                        del atom
-                        deleted_hydrogen = True
-                
-                if not deleted_hydrogen:
-                    logger.warn(f"Could not find his ({res}) 2HNE atom, searching again!")
-                    for a in res.atoms:
-                        if a.id.lower() == "2hne" or a.id.lower() == "he2":
-                            #bastard got through
-                            logger.warn("Found the hydrogen!")
-                            for b in a.bonds:
-                                b.bonds.remove(a)
-                            
-                            res.atoms.remove(a)
-                            del a
-                            break
-                
-                #Now we add a proton to the ND1 atom
-                delta_nitrogen = res.get_atom("ND1")
-                skip = False
-                for a in res.atoms:
-                    if a.id.lower() == "hd1":
-                        skip = True
-
-                for a in delta_nitrogen.bonds:
-                    if a.element.lower() == "h":
-                        skip = True
-
-                if not skip:
-                    logger.debug(f"Adding delta nitrogen to {res}")
-                    add_proton(delta_nitrogen, ID="HD1")
-               
-    #For any added protons (fix the labeling and numbering)
-    new_protein.reformat_protein()
-
-    return new_protein
-
 def protein_to_coord(initial_protein, chop_params):
 
     logger.debug("Protonating the protein")
@@ -200,7 +95,7 @@ def protein_to_coord(initial_protein, chop_params):
     protein = utilities.load_pdb("_to_copy.pdb")
     os.remove("_to_copy.pdb")
 
-    protein = addH(protein)
+    protein = utilities.addH(protein)
 
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []
@@ -494,7 +389,7 @@ def protein_to_coord(initial_protein, chop_params):
                 #Need to actually compute some angles and place in an atom...
                 atom_to_protonate = res.get_atom(heavy_atom)
                
-                proton = add_proton(atom_to_protonate)
+                proton = utilities.add_proton(atom_to_protonate)
                 atoms.append(proton)
 
     if "Freeze Atoms" in chop_params.keys():
@@ -547,7 +442,7 @@ def coord_to_protein(initial_protein, chop_params):
         logger.error("No label file found")
         raise FileNotFoundError("label")
 
-    protein = addH(initial_protein)
+    protein = utilities.addH(initial_protein)
 
     coord_lines = []
     labels = []

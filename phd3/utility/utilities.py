@@ -15,6 +15,7 @@ from logging.config import dictConfig
 from subprocess import Popen, PIPE
 import subprocess
 from random import shuffle
+import numpy as np
 
 #PHD3 Imports
 from ..protein import atom, chain, residue, protein
@@ -43,7 +44,9 @@ __all__=[
     'load_phd_config',
     'copy_directories',
     'quote_me',
-    'xyz_to_coord'
+    'xyz_to_coord',
+    'add_proton',
+    'addH',
 ]
 
 logger = logging.getLogger(__name__)
@@ -758,7 +761,7 @@ def make_state_file(parameters: dict, pdbName):
 
     logger.debug("Made the state file!")
 
-def make_movie(initial_pdb, movie_file, output_pdb):
+def make_movie(initial_pdb, movie_file, output_pdb, protonate=[]):
     """
 
     :param initial_pdb: name of the initial pdb for the dmd run
@@ -783,6 +786,29 @@ def make_movie(initial_pdb, movie_file, output_pdb):
 
     if os.path.isfile("m2p.err"):
         os.remove("m2p.err")
+
+    if protonate:
+        proteins = load_movie(output_pdb)
+        
+        if protonate[0] == "all":
+            os.remove(output_pdb)
+            for pro in proteins:
+                pro = addH(pro)
+                pro.write_pdb(name=output_pdb, append=True)
+        
+        else:
+            for p in protonate:
+                try:
+                    index = int(p)
+                    pro = proteins[index]
+                
+                except (ValueError, IndexError):
+                    logger.error(f"Skipping {p}")
+                    continue
+
+                pro = addH(pro)
+                pro.write_pdb(name=f"{output_pdb.split('.')[0]}_{index}.pdb")
+
 
 def load_movie(movie_file:str):
     if not os.path.isfile(movie_file):
@@ -940,3 +966,107 @@ def xyz_to_coord(xyz_file):
             logger.info(shell.stderr.readline().strip())
 
 
+def add_proton(atm, ID="HY"):
+    vectors = []
+    for a in atm.bonds:
+        vectors.append(a.coords - atm.coords)
+        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
+
+    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
+    direction = -1.1* sum(vectors)
+
+    new_proton = atom.Atom(element = "H", coords = atm.coords + direction, id=ID, number=20)
+
+    #Update the bond lists etc...
+    atm.add_bond(new_proton)
+    atm.residue.add_atom(new_proton)
+
+    return new_proton
+
+
+def addH(protein):
+    phd_config = load_phd_config()
+    chimera_path = phd_config["PATHS"]["chimera"]
+
+    protein.reformat_protein()
+    protein.remove_h()
+    protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
+
+    with open("chimeraaddh.com", "w") as comfile:
+        comfile.write("open _temp.pdb\n")
+        comfile.write("addh\n")
+        comfile.write("write format pdb 0 addh.pdb\n")
+        comfile.write("stop\n")
+
+    try:
+        with Popen(f"{os.path.join(chimera_path, 'chimera')} --nogui chimeraaddh.com",
+                stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
+            while shell.poll() is None:
+                logger.debug(shell.stdout.readline().strip())
+
+    except OSError:
+        logger.exception("Error calling chimera")
+        raise
+
+    if not os.path.isfile("addh.pdb"):
+        logger.exception("Could not call chimera, check your path")
+        raise OSError("chimera")
+
+    logger.debug("Removing chimeraddh.com")
+    os.remove("chimeraaddh.com")
+    logger.debug("Removing _temp.pdb")
+    os.remove("_temp.pdb")
+
+    new_protein = load_pdb("addh.pdb")
+    new_protein.chains.append(protein.sub_chain)
+
+    new_protein.reformat_protein()
+    logger.debug("Removing addh.pdb")
+    os.remove("addh.pdb")
+
+    #Remove all epsilon hydrogens on the histidines
+    for chain in new_protein.chains:
+        for res in chain.residues:
+            if res.name.upper() == "HIS":
+                epsilon_nitrogen = res.get_atom("NE2")
+                deleted_hydrogen = False
+                for atom in epsilon_nitrogen.bonds:
+                    if atom.element.lower() == "h":
+                        #DELETE THIS ATOM, no good two-timer
+                        epsilon_nitrogen.bonds.remove(atom)
+                        res.atoms.remove(atom)
+                        del atom
+                        deleted_hydrogen = True
+
+                if not deleted_hydrogen:
+                    logger.warn(f"Could not find his ({res}) 2HNE atom, searching again!")
+                    for a in res.atoms:
+                        if a.id.lower() == "2hne" or a.id.lower() == "he2":
+                            #bastard got through
+                            logger.warn("Found the hydrogen!")
+                            for b in a.bonds:
+                                b.bonds.remove(a)
+
+                            res.atoms.remove(a)
+                            del a
+                            break
+
+                #Now we add a proton to the ND1 atom
+                delta_nitrogen = res.get_atom("ND1")
+                skip = False
+                for a in res.atoms:
+                    if a.id.lower() == "hd1":
+                        skip = True
+
+                for a in delta_nitrogen.bonds:
+                    if a.element.lower() == "h":
+                        skip = True
+
+                if not skip:
+                    logger.debug(f"Adding delta nitrogen to {res}")
+                    add_proton(delta_nitrogen, ID="HD1")
+
+    #For any added protons (fix the labeling and numbering)
+    new_protein.reformat_protein()
+
+    return new_protein
