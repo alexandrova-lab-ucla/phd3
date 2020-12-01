@@ -41,6 +41,7 @@ class TMcalculation:
         self._para_arch = "SMP"
         self._resub = False
         self._timer_went_off = False
+        self._coord_file = ""
 
         #Start the general signal for sigUSR1
         #This will call function calculation_alarm_handler if SIGUSR1 is sent to the node
