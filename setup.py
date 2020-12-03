@@ -21,7 +21,8 @@ setup(
             'setupdmd.py=phd3.bin.setupdmd:main',
             'rundmd.py=phd3.bin.rundmd:main',
             'm2p=phd3.bin.movietopdb:main',
-            's2x=phd3.bin.scan:scan_2_xyz'
+            's2x=phd3.bin.scan:scan_2_xyz',
+            'cutqm.py=phd3.bin.cutqm:main'
             ]
     },
 )

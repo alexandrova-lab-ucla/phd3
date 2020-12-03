@@ -16,6 +16,7 @@ from subprocess import Popen, PIPE
 import subprocess
 from random import shuffle
 import numpy as np
+from datetime import datetime
 
 #PHD3 Imports
 from ..protein import atom, chain, residue, protein
@@ -870,6 +871,7 @@ def last_frame(movie_file):
 def print_header():
     main_logger = logging.getLogger("phd3")
 
+    main_logger.info(datetime.now())
     main_logger.info("")
     main_logger.info("==============================================================================")
     main_logger.info("")
@@ -884,7 +886,7 @@ def print_header():
     main_logger.info("")
     main_logger.info("--------------------[Protein Hybrid Discrete Dynamics/DFT]--------------------")
     main_logger.info("")
-    main_logger.info("[Version]            ==>>    1.0.0")
+    main_logger.info("[Version]            ==>>    1.0.9")
     main_logger.info("")
     main_logger.info("[Idea and Director]  ==>>    Anastassia N. Alexandrova ")
     main_logger.info("[Idea and Director]  ==>>    Manuel Sparta")

@@ -210,7 +210,7 @@ class Protein:
                     if residue.number == identifier[1]:
                         return residue
 
-        self._logger.error("Could not find requested residue")
+        self._logger.error(f"Could not find requested residue {identifier}")
         raise ValueError
 
     def get_chain(self, identifier):
