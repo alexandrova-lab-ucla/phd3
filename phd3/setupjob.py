@@ -118,7 +118,7 @@ class setupTMjob:
         """
         logger.debug("Initializing variables")
         # Initialize instance vars
-        self.timeout = 15
+        self.timeout = timeout
         self._raw_parameters = {}  # user provided parameters
         self._initial_directory = ""  # Current working directory
         self._run_directory = ""
