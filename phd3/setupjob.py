@@ -1013,35 +1013,16 @@ class setupDMDjob:
         # Here we do a short run
         overlap = False
         try:
-            with Popen(f"pdmd.linux -i dmd_start_short -s state -p param -c outConstr -m 1",
+            with Popen(f"pdmd.linux -i dmd_start_short -s state -p param -c outConstr -m 1 > shortdmd.out",
                     stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
                 while shell.poll() is None:
                     line = shell.stdout.readline().strip()
-                    if "* Atoms overlap" in line:
-                        overlap = True
-                        logger.error(line)
-
-                    else:
-                        logger.debug(line)
+                    logger.debug(line)
 
         except OSError:
             logger.exception("Error calling pdmd.linux")
             raise
-
-        if overlap:
-            logger.error("Atoms are overlapping, checking for exact atoms!")
-            for chain in self._protein.chains:
-                for residues in chain.residues:
-                    for i_atom in residues.atoms:
-                        for n_res in chain.residues:
-                            for n_atom in n_res.atoms:
-                                if i_atom is n_atom:
-                                    continue
-
-                                if np.linalg.norm(i_atom.coords - n_atom.coords) < 0.5:
-                                    logger.error(f"Check: {i_atom} and {n_atom} at residue {residues}!")
-
-
+                               
         if not os.path.isfile("movie"):
             logger.error("movie file was not made, dmd seems to be anrgy at your pdb")
             raise ValueError("initial.pdb")
