@@ -9,6 +9,8 @@ import argparse
 from phd3 import setupTMjob
 from phd3.utility import utilities, exceptions
 
+sys.settrace
+
 def main():
     # Begin the logger (__main__)
     try:

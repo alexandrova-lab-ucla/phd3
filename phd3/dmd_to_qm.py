@@ -22,115 +22,68 @@ import phd3.protein as pro
 logger = logging.getLogger(__name__)
 
 _all__ = [
-        'addH',
         'protein_to_coord',
         'coord_to_protein'
         ]
 
-def add_proton(atom, ID="HY"):
-    vectors = []
+#Now we recursively delete the atoms
+def remove_bonds_from_list(atom, remove_list, residue=None):
+    proceed = False
+   
     for a in atom.bonds:
-        vectors.append(a.coords - atom.coords)
-        vectors[-1] = vectors[-1]/np.linalg.norm(vectors[-1])
-
-    #If this is a carboynl, it adds the hydrogen linearly...not ideal, but should be good enough...
-    direction = -1.1* sum(vectors)
-
-    new_proton = pro.atom.Atom(element = "H", coords = atom.coords + direction, id=ID, number=20)
+        if residue is None:
+            if a not in remove_list:
+                proceed = True
+                break
     
-    #Update the bond lists etc...
-    atom.add_bond(new_proton)
-    atom.residue.add_atom(new_proton)
-    
-    return new_proton
+        else:
+            if a not in remove_list and a in residue.atoms:
+                proceed = True
+                break
+
+    if proceed:
+        if residue is None:
+            for a in atom.bonds:
+                remove_list.append(a)
+                remove_bonds_from_list(a, remove_list)
+
+        else:
+            while atom.bonds:
+                a = atom.bonds.pop()
+                if a.residue is residue:
+                    if atom in a.bonds:
+                        a.bonds.remove(atom)
+                
+                    remove_list.append(a)
+                    remove_bonds_from_list(a, remove_list, residue)
 
 
-def addH(protein):
-    phd_config = utilities.load_phd_config()
-    chimera_path = phd_config["PATHS"]["chimera"]
+def add_to_cut_list(atom_to_keep, atom_to_replace, cut_list, remove_list):
+    try:
+        atom_to_keep.bonds.remove(atom_to_replace)
 
-    protein.reformat_protein()
-    protein.remove_h()
-    protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
-
-    with open("chimeraaddh.com", "w") as comfile:
-        comfile.write("open _temp.pdb\n")
-        comfile.write("addh\n")
-        comfile.write("write format pdb 0 addh.pdb\n")
-        comfile.write("stop\n")
+    except ValueError:
+        logger.warn(f"{atom_to_replace} not in {atom_to_keep} bonds")
 
     try:
-        with Popen(f"{os.path.join(chimera_path, 'chimera')} --nogui chimeraaddh.com",
-                stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
-            while shell.poll() is None:
-                logger.debug(shell.stdout.readline().strip())
+        atom_to_replace.bonds.remove(atom_to_keep)
 
-    except OSError:
-        logger.exception("Error calling chimera")
-        raise
+    except ValueError:
+        logger.warn(f"{atom_to_keep} not in {atom_to_replace} bonds")
 
-    if not os.path.isfile("addh.pdb"):
-        logger.exception("Could not call chimera, check your path")
-        raise OSError("chimera")
+    # prevents the recursion from deleting our "frozen" atom
+    for b in atom_to_replace.bonds:
+        try:
+            b.bonds.remove(atom_to_replace)
+        
+        except ValueError:
+            logger.warn(f"{atom_replace} not in {b} bonds")
+    
+    remove_bonds_from_list(atom_to_replace, remove_list, atom_to_replace.residue)
+    atom_to_replace.bonds = []
 
-    logger.debug("Removing chimeraddh.com")
-    os.remove("chimeraaddh.com")
-    logger.debug("Removing _temp.pdb")
-    os.remove("_temp.pdb")
+    cut_list.append([atom_to_keep, atom_to_replace])
 
-    new_protein = utilities.load_pdb("addh.pdb")
-    new_protein.chains.append(protein.sub_chain)
-
-    new_protein.reformat_protein()
-    logger.debug("Removing addh.pdb")
-    os.remove("addh.pdb")
-
-    #Remove all epsilon hydrogens on the histidines
-    for chain in new_protein.chains:
-        for res in chain.residues:
-            if res.name.upper() == "HIS":
-                epsilon_nitrogen = res.get_atom("NE2")
-                deleted_hydrogen = False
-                for atom in epsilon_nitrogen.bonds:
-                    if atom.element.lower() == "h":
-                        #DELETE THIS ATOM, no good two-timer
-                        epsilon_nitrogen.bonds.remove(atom)
-                        res.atoms.remove(atom)
-                        del atom
-                        deleted_hydrogen = True
-                
-                if not deleted_hydrogen:
-                    logger.warn(f"Could not find his ({res}) 2HNE atom, searching again!")
-                    for a in res.atoms:
-                        if a.id.lower() == "2hne" or a.id.lower() == "he2":
-                            #bastard got through
-                            logger.warn("Found the hydrogen!")
-                            for b in a.bonds:
-                                b.bonds.remove(a)
-                            
-                            res.atoms.remove(a)
-                            del a
-                            break
-                
-                #Now we add a proton to the ND1 atom
-                delta_nitrogen = res.get_atom("ND1")
-                skip = False
-                for a in res.atoms:
-                    if a.id.lower() == "hd1":
-                        skip = True
-
-                for a in delta_nitrogen.bonds:
-                    if a.element.lower() == "h":
-                        skip = True
-
-                if not skip:
-                    logger.debug(f"Adding delta nitrogen to {res}")
-                    add_proton(delta_nitrogen, ID="HD1")
-               
-    #For any added protons (fix the labeling and numbering)
-    new_protein.reformat_protein()
-
-    return new_protein
 
 def protein_to_coord(initial_protein, chop_params):
 
@@ -142,7 +95,7 @@ def protein_to_coord(initial_protein, chop_params):
     protein = utilities.load_pdb("_to_copy.pdb")
     os.remove("_to_copy.pdb")
 
-    protein = addH(protein)
+    protein = utilities.addH(protein)
 
     #We fill with all possible atoms, and then remove what is not in the QM
     atoms = []
@@ -201,24 +154,13 @@ def protein_to_coord(initial_protein, chop_params):
                     res_num += 1
 
                 #can later include a specification of what to include here
-                linked_residues_end.append([protein.get_residue([chain1, res_num_1]), protein.get_residue([chain1, res_num_2]), cutleft, cutright])
+                linked_residues_end.append([protein.get_residue([chain1, res_num_1]), protein.get_residue([chain1, res_num_2]), cutleft.lower(), cutright.lower()])
 
 
             else:
                 #Normal residue specification
-                res = res.split(":")
-                assert(len(res) == 2)
-
-                chain = res[0]
-                try:
-                    res_num = int(res[1])
-            
-                except ValueError:
-                    logger.error("Invalid specification of residue")
-                    raise
-                
-                normal_residues.append(protein.get_residue([chain, res_num]))
-                atoms.extend(protein.get_residue([chain, res_num]).atoms)
+                normal_residues.append(protein.get_residue(res))
+                atoms.extend(protein.get_residue(res).atoms)
 
     #Strictly removed
     remove_atoms = []
@@ -237,50 +179,16 @@ def protein_to_coord(initial_protein, chop_params):
             assert(len(exclude) == 3)
             remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1]), exclude[2]]))
                 
-    #Now we recursively delete the atoms
-    def remove_bonds_from_list(atom, residue=None):
-        proceed = False
-       
-        for a in atom.bonds:
-            if residue is None:
-                if a not in remove_atoms:
-                    proceed = True
-                    break
-        
-            else:
-                if a not in remove_atoms and a in residue.atoms:
-                    proceed = True
-                    break
-
-        if proceed:
-            if residue is None:
-                for a in atom.bonds:
-                    remove_atoms.append(a)
-                    remove_bonds_from_list(a)
-
-            else:
-                while atom.bonds:
-                    a = atom.bonds.pop()
-                    if a.residue is residue:
-                        if atom in a.bonds:
-                            a.bonds.remove(atom)
-                    
-                        remove_atoms.append(a)
-                        remove_bonds_from_list(a, residue)
 
     if "Substrate Chop" in chop_params.keys():
         atoms_to_remove = []
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
         for chop in chop_params["Substrate Chop"]:
             chop = chop.split("-")
-            keepatom = chop[0].split(":")
-            removeatom = chop[1].split(":")
             
-            assert(len(keepatom) == 3)
-            assert(len(removeatom) == 3)
-
-            keepatom = protein.get_atom([keepatom[0], int(keepatom[1]), keepatom[2]])
-            removeatom = protein.get_atom([removeatom[0], int(removeatom[1]), removeatom[2]])
+            # Actually retrives atom objects
+            keepatom = protein.get_atom(chop[0])
+            removeatom = protein.get_atom(chop[1])
 
             keepatom.bonds.remove(removeatom)
             removeatom.bonds.remove(keepatom)
@@ -308,17 +216,17 @@ def protein_to_coord(initial_protein, chop_params):
                 if keepatom.residue in normal_residues:
                     normal_residues.remove(keepatom.residue)
 
-                if "Exclude Sidechain" in chop_params.keys():
+                if "Exclude Side Chain" in chop_params.keys():
                     res_id = f"{chop[0][0]}:{chop[0][1]}"
-                    if res_id in chop_params["Exclude Sidechain"]:
-                        chop_params["Exclude Sidechain"].remove(res_id)
+                    if res_id in chop_params["Exclude Side Chain"]:
+                        chop_params["Exclude Side Chain"].remove(res_id)
 
         for a in atoms_to_remove:
             if a.residue.name in constants.AMINO_ACID_RESIDUES:
-                remove_bonds_from_list(a, a.residue)
+                remove_bonds_from_list(a, remove_atoms, a.residue)
             
             else:
-                remove_bonds_from_list(a, a.residue)
+                remove_bonds_from_list(a, remove_atoms, a.residue)
             
             a.bonds = []
 
@@ -343,21 +251,7 @@ def protein_to_coord(initial_protein, chop_params):
                     if a.id == "N":
                         res.get_atom("C").bonds.remove(a)
             
-                if res.get_atom("CB") in res.get_atom("CA").bonds:
-                    res.get_atom("CA").bonds.remove(res.get_atom("CB"))
-                    res.get_atom("CB").bonds.remove(res.get_atom("CA"))
-
-                else:
-                    logger.warn(f"CB not bonded to CA in residue {res}")
-
-                #We do this so we don't remove the CA atom
-                for b in res.get_atom("CA").bonds:
-                    b.bonds.remove(res.get_atom("CA"))
-
-                remove_bonds_from_list(res.get_atom("CA"), res)
-                res.get_atom("CA").bonds = []
-
-                chop_atoms.append([res.get_atom("CB"), res.get_atom("CA")])
+                add_to_cut_list(res.get_atom("CB"), res.get_atom("CA"), chop_atoms, remove_atoms)
         
         else:
             logger.error("Cannot specify non-amino acid residues in the 'Residue' section of the chop")
@@ -365,105 +259,103 @@ def protein_to_coord(initial_protein, chop_params):
 
     for linked_residues in linked_residues_end:
         nterm = linked_residues[0]
-        
+       
+        n_atom = nterm.get_atom("N")
         if linked_residues[2] == 'c':
-            for a in nterm.get_atom("N").bonds:
+            for a in n_atom.bonds:
                 if a.id == "C":
                     atoms.append(a)
-                    chop_atoms.append(nterm.get_atom("N"), a)
+                    # I don't know why it gets added to this list, but there must be a good reason...
+                    if a in remove_atoms:
+                        remove_atoms.remove(a)
+                    chop_atoms.append([n_atom, a])
+                    break
 
             #If we don't find a "C", then we have an n-terminus...and therefore kinda pointless to cut...
-
-        elif linked_residues[2] == 'n':
-            #cut residue from other residues first
-            for a in nterm.get_atom("N").bonds:
-                if a.id == "C":
-                    nterm.get_atom("N").bonds.remove(a)
-                    a.bonds.remove(nterm.get_atom("N"))
-
-            if nterm.get_atom("N") in nterm.get_atom("CA").bonds:
-                nterm.get_atom("CA").bonds.remove(nterm.get_atom("N"))
-                nterm.get_atom("N").bonds.remove(nterm.get_atom("CA"))
-        
             else:
-                logger.warn(f"N not in CA bonds in residue {nterm}")
+                logger.warn(f"Could not cut {linked_residues[0]} properly, could be N-terminus")
 
-            #ensures that we don't remove the N atom...
-            for b in nterm.get_atom("N").bonds:
-                b.bonds.remove(nterm.get_atom("N"))
+        elif linked_residues[2] == 'a' or linked_residues[2] == 'n':
+            for a in n_atom.bonds:
+                if a.id == 'C':
+                    n_atom.bonds.remove(a)
+                    try:
+                        a.bonds.remove(n_atom)
 
-            #Cut this stuff out
-            remove_bonds_from_list(nterm.get_atom("N"))
-            nterm.get_atom("N").bonds = []
-            chop_atoms.append([nterm.get_atom("CA"), nterm.get_atom("N")])
+                    except ValueError:
+                        logger.warn(f"{n_atom} not in bond list for {a}")
 
+            if linked_residues[2] == 'a':
+                add_to_cut_list(nterm.get_atom("C"), nterm.get_atom("CA"), chop_atoms, remove_atoms)
+                if "Exclude Side Chain" in chop_params.keys():
+                    if nterm.label() in chop_params["Exclude Side Chain"]:
+                        chop_params["Exclude Side Chain"].remove(nterm.label())
+
+            else:
+                add_to_cut_list(nterm.get_atom("CA"), nterm.get_atom("N"), chop_atoms, remove_atoms)
 
         else:
             logger.error("Invalid cut specification for residue {str(nterm)}")
             raise ValueError("Cut specification for {str(nterm)}")
 
         cterm = linked_residues[1]
+        c_atom = cterm.get_atom("C")
 
-        if linked_residues[3] == 'c':
-            #chop between CA and C to make CRH2
-            for a in cterm.get_atom("C").bonds:
-                if a.id == "N":
-                    cterm.get_atom("C").bonds.remove(a)
-                    a.bonds.remove(cterm.get_atom("C"))
-
-            cterm.get_atom("C").bonds.remove(cterm.get_atom("CA"))
-            cterm.get_atom("CA").bonds.remove(cterm.get_atom("C"))
-
-            for b in cterm.get_atom("C").bonds:
-                b.bonds.remove(cterm.get_atom("C"))
-
-            remove_bonds_from_list(cterm.get_atom("C"))
-            cterm.get_atom("C").bonds = []
-
-            chop_atoms.append([cterm.get_atom("CA"), cterm.get_atom("C")])
-
-        elif linked_residues[3] == 'n':
+        if linked_residues[3] == 'n':
             #chop between c and n to make aldehyde
             for a in cterm.get_atom("C").bonds:
                 if a.id == "N":
                     atoms.append(a)
-                    chop_atoms.append([cterm.get_atom("C"), a])
+                    try:
+                        chop_atoms.append([cterm.get_atom("C"), a])
+                    
+                    except ValueError:
+                        logger.warn(f"{c_atom} not in bond list for {a}")
+
+                    break
+
+            else:
+                logger.warn(f"Could not cut {linked_residues[1]} properly, could be a C-terminus")
+
+        elif linked_residues[3] == 'c' or linked_residues[3] == 'a':
+            # Cut residues from rest of protein
+            for a in c_atom.bonds:
+                if a.id == "N":
+                    c_atom.bonds.remove(a)
+                    try:
+                        a.bonds.remove(c_atom)
+
+                    except ValueError:
+                        logger.warn(f"{c_atom} not in bond list for {a}")
+
+            if linked_residues[3] == 'c':
+                add_to_cut_list(cterm.get_atom("CA"), cterm.get_atom("C"), chop_atoms, remove_atoms)
+
+            else:
+                add_to_cut_list(cterm.get_atom("N"), cterm.get_atom("CA"), chop_atoms, remove_atoms)
+                if "Exclude Side Chain" in chop_params.keys():
+                    if cterm.label() in chop_params["Exclude Side Chain"]:
+                        chop_params["Exclude Side Chain"].remove(cterm.label())
 
         else:
             logger.error("Invalid cut specification for residue {str(cterm)}")
-            raise ValueError("Cut specification for {str(cterm)}")
+            raise ValueError(f"Cut specification for {str(cterm)}")
 
-    if "Exclude Sidechain" in chop_params.keys():
-        for sidechain in chop_params["Exclude Sidechain"]:
-            sidechain = sidechain.split(":")
-            assert(len(sidechain) == 2)
-            chain = sidechain[0]
-            resNum = int(sidechain[1])
-
-            res = protein.get_residue([chain, resNum])
+    if "Exclude Side Chain" in chop_params.keys():
+        for sidechain in chop_params["Exclude Side Chain"]:
+            res = protein.get_residue(sidechain)
 
             if res.name == "GLY":
                 logger.warn("Cannot exclude the sidechain of glycine!")
                 continue
-
-            res.get_atom("CA").bonds.remove(res.get_atom("CB"))
-            res.get_atom("CB").bonds.remove(res.get_atom("CA"))
-
-            for a in res.get_atom("CB").bonds:
-                a.bonds.remove(res.get_atom("CB"))
-
-            remove_bonds_from_list(res.get_atom("CB"))
-            chop_atoms.append([res.get_atom("CA"), res.get_atom("CB")])
+            
+            add_to_cut_list(res.get_atom("CA"), res.get_atom("CB"), chop_atoms, remove_atoms)
 
     if "Protonation" in chop_params.keys():
         for protonation_state in chop_params["Protonation"]:
-            resID = protonation_state[0]
             state = protonation_state[1:]
-  
-            chain = resID.split(":")[0]
-            resNum = int(resID.split(":")[1])
 
-            res = protein.get_residue([chain, resNum])
+            res = protein.get_residue(protonation_state[0])
 
             if len(state) > 1:
                 if state[0] == "protonate":
@@ -497,24 +389,16 @@ def protein_to_coord(initial_protein, chop_params):
                 #Need to actually compute some angles and place in an atom...
                 atom_to_protonate = res.get_atom(heavy_atom)
                
-                proton = add_proton(atom_to_protonate)
+                proton = utilities.add_proton(atom_to_protonate)
                 atoms.append(proton)
 
     if "Freeze Atoms" in chop_params.keys():
         for a in chop_params["Freeze Atoms"]:
-            a = a.split(":")
-            chain = a[0]
-            res_num = int(a[1])
-            atom_id = a[2]
-            protein.get_atom([chain, res_num, atom_id]).freeze = True
+            protein.get_atom(a).freeze = True
 
     if "Dummy H" in chop_params.keys():
         for a in chop_params["Dummy H"]:
-            a = a.split(":")
-            chain = a[0]
-            res_num = int(a[1])
-            atom_id = a[2]
-            remove_atoms.append(protein.get_atom([chain, res_num, atom_id]))
+            remove_atoms.append(protein.get_atom(a))
 
     #Make sure that the chops are not connected to each other
     for chop in chop_atoms:
@@ -558,7 +442,7 @@ def coord_to_protein(initial_protein, chop_params):
         logger.error("No label file found")
         raise FileNotFoundError("label")
 
-    protein = addH(initial_protein)
+    protein = utilities.addH(initial_protein)
 
     coord_lines = []
     labels = []
@@ -583,25 +467,22 @@ def coord_to_protein(initial_protein, chop_params):
 
     #coord_lines is (coords, element)
     for atom, label in zip(coord_lines, labels):
-        label = label.split(":")
-        chain = label[0]
-        resNum = int(label[1])
-        atomID = label[2]
+        atomID = label.split(":")[2]
 
         #HX are dummy from chops, HY are protons for protonation
         if atomID == "HX" or atomID == "HY":
             continue
 
         try:
-            if protein.get_atom([chain, resNum, atomID]).element != "Zn" and protein.get_atom([chain, resNum, atomID]).element.lower() == atom[1].lower():
-                protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
+            if protein.get_atom(label).element != "Zn" and protein.get_atom(label).element.lower() == atom[1].lower():
+                protein.get_atom(label).coords = atom[0] / constants.A_TO_BOHR
            
-            elif protein.get_atom([chain, resNum, atomID]).id.lower() == atom[1].lower():
-                protein.get_atom([chain, resNum, atomID]).coords = atom[0] / constants.A_TO_BOHR
+            elif protein.get_atom(label).id.lower() == atom[1].lower():
+                protein.get_atom(label).coords = atom[0] / constants.A_TO_BOHR
 
             else:
                 logger.error("Label file is out of order from coord file!")
-                logger.error(f"Chain: {chain}, Res: {resNum}, atom: {atomID}")
+                logger.error(label)
                 raise ValueError("Label file")
 
         except ValueError:
@@ -611,8 +492,7 @@ def coord_to_protein(initial_protein, chop_params):
                           
     if "Dummy H" in chop_params.keys():
         for atom in chop_params["Dummy H"]:
-            atom = atom.split(":")
-            atom = protein.get_atom([atom[0], int(atom[1]), atom[2]])
+            atom = protein.get_atom(atom)
             if atom.bonds:
                 b = atom.bonds[0]
                 d = b.coords - atom.coords

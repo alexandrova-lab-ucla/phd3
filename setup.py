@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="phd3",
-    version="1.0.4",
+    version="1.0.9",
     author=["Matthew R. Hennefarth", "David J. Reilley"],
     package_data={'': ['*.json', '*.j2', '*.config']},
     packages=find_packages(),
@@ -21,7 +21,8 @@ setup(
             'setupdmd.py=phd3.bin.setupdmd:main',
             'rundmd.py=phd3.bin.rundmd:main',
             'm2p=phd3.bin.movietopdb:main',
-            's2x=phd3.bin.scan:scan_2_xyz'
+            's2x=phd3.bin.scan:scan_2_xyz',
+            'cutqm.py=phd3.bin.cutqm:main'
             ]
     },
 )

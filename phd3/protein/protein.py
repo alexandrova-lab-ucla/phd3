@@ -200,13 +200,17 @@ class Protein:
         raise ValueError
 
     def get_residue(self, identifier):
+        if type(identifier) == str:
+            identifier = identifier.split(":")
+            identifier[1] = int(identifier[1])
+
         for chain in self.chains:
             if chain.name == identifier[0]:
                 for residue in chain.residues:
                     if residue.number == identifier[1]:
                         return residue
 
-        self._logger.error("Could not find requested residue")
+        self._logger.error(f"Could not find requested residue {identifier}")
         raise ValueError
 
     def get_chain(self, identifier):
@@ -217,13 +221,17 @@ class Protein:
         self._logger.error("Could not find the requested chain")
         raise ValueError
 
-    def write_pdb(self, name=None, exclude_sub_chain=False):
+    def write_pdb(self, name=None, exclude_sub_chain=False, append=False):
         if name is None:
             name = self.name
 
+        write_type = 'w'
+        if append:
+            write_type = 'a'
+
         self._logger.debug(f"Writing out pdb: {name}")
         try:
-            with open(name, 'w') as pdb:
+            with open(name, write_type) as pdb:
                 for chain in self.chains[:-1]:
                     for residue in chain.residues:
                         for atom in residue.atoms:
