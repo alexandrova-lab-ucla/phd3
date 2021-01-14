@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#
 # Can be installed on any system
 # POSIX compliant
 
