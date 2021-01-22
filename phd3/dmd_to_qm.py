@@ -179,7 +179,6 @@ def protein_to_coord(initial_protein, chop_params):
             assert(len(exclude) == 3)
             remove_atoms.append(protein.get_atom([exclude[0], int(exclude[1]), exclude[2]]))
                 
-
     if "Substrate Chop" in chop_params.keys():
         atoms_to_remove = []
         #We make all of the chops first, then we will recursively add the atoms bonded to remove_atoms to the removeList
@@ -190,8 +189,17 @@ def protein_to_coord(initial_protein, chop_params):
             keepatom = protein.get_atom(chop[0])
             removeatom = protein.get_atom(chop[1])
 
-            keepatom.bonds.remove(removeatom)
-            removeatom.bonds.remove(keepatom)
+            try:
+                keepatom.bonds.remove(removeatom)
+            
+            except:
+                pass
+
+            try:
+                removeatom.bonds.remove(keepatom)
+
+            except:
+                pass
 
             #This way we don't premptively remove the removeatom (which will be replaced by a hydrogen)
             for b in removeatom.bonds:

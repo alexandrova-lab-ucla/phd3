@@ -182,6 +182,18 @@ class Protein:
         else: #relabel calls make_bond_table already
             self._logger.debug("Making the bond table for the protein")
             self.make_bond_table()
+    
+    def identify_subchain(self):
+        for chain in self.chains:
+            for residue in chain.residues:
+                if residue.name in constants.AMINO_ACID_RESIDUES:
+                    break
+
+            else:
+                return chain
+        
+        return None
+
 
     def get_atom(self, identifier):
         if type(identifier) == str:
@@ -474,12 +486,13 @@ class Protein:
             while shell.poll() is None:
                 self._logger.debug(shell.stdout.readline().strip())
                 output = shell.stderr.readline().strip()
+                output += shell.stdout.readline().strip()
                 self._logger.debug(output)
                 if "1 molecule converted" in output:
                     successful = True
 
         if not successful:
-            self._logger.error("Could not create {residue.name} mol2 file!")
+            self._logger.error(f"Could not create {self.name} mol2 file!")
             raise OSError("mol2_file")
 
         #Clear the bond lists first:
@@ -553,7 +566,7 @@ class Protein:
                     res.atoms.remove(a)
 
         if not self.sub_chain.residues:
-            for res in self.chains[-1]:
+            for res in self.chains[-1].residues:
                 remove_atoms= []
                 for a in res.atoms:
                     if a.element.lower() == "h":

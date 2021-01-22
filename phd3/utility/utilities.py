@@ -11,6 +11,7 @@ import pkg_resources
 import logging
 import shutil
 import random
+import copy
 from logging.config import dictConfig
 from subprocess import Popen, PIPE
 import subprocess
@@ -1021,8 +1022,8 @@ def addH(protein):
 
     new_protein = load_pdb("addh.pdb")
     new_protein.chains.append(protein.sub_chain)
-
     new_protein.reformat_protein()
+
     logger.debug("Removing addh.pdb")
     os.remove("addh.pdb")
 
@@ -1072,3 +1073,5 @@ def addH(protein):
     new_protein.reformat_protein()
 
     return new_protein
+
+

@@ -15,6 +15,7 @@ from timeit import default_timer as timer
 import datetime
 from subprocess import Popen, PIPE, STDOUT
 import time
+import tarfile
 
 #PHD3 Imports
 from phd3.utility import utilities, exceptions, constants
@@ -133,7 +134,7 @@ class TMcalculation:
         # Check for MOs in tar.gz format
         for mo_file in constants.MO_FILES:
             if os.path.isfile(f"{mo_file}.tar.gz"):
-                logger.info(f"[Untaring] ==>> {f}")
+                logger.info(f"[Untaring] ==>> {mo_file}")
                 with tarfile.open(f"{mo_file}.tar.gz", "r:gz") as tar:
                     tar.extractall()
 
