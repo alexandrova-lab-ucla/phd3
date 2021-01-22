@@ -886,7 +886,7 @@ def print_header():
     main_logger.info("")
     main_logger.info("--------------------[Protein Hybrid Discrete Dynamics/DFT]--------------------")
     main_logger.info("")
-    main_logger.info("[Version]            ==>>    1.0.9")
+    main_logger.info("[Version]            ==>>    1.0.10")
     main_logger.info("")
     main_logger.info("[Idea and Director]  ==>>    Anastassia N. Alexandrova ")
     main_logger.info("[Idea and Director]  ==>>    Manuel Sparta")
