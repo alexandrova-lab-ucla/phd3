@@ -145,6 +145,8 @@ class dmd_simulation:
                 
                 if os.path.isfile(updated_parameters["Movie File"]):
                     utilities.make_movie("initial.pdb", updated_parameters["Movie File"], "_tmpMovie.pdb")
+                    print('Movie file name: ')
+                    print(updated_parameters["Movie File"])
                     #Append to movie
                     with open("_tmpMovie.pdb", 'r') as tmpMovie, open("movie.pdb", 'a') as movie:
                         for line in tmpMovie:
@@ -188,6 +190,7 @@ class dmd_simulation:
                     #TODO, check if this raises any exceptions, and if so, bo back a step
                     try:
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
 
                     except Propka_Error:
                         #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
@@ -205,6 +208,7 @@ class dmd_simulation:
                         self._start_time -= updated_parameters["Time"]
                         repeat = True
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
 
                     else:
                         if not repeat:
@@ -230,6 +234,7 @@ class dmd_simulation:
                     last_frame = utilities.load_pdb("initial.pdb")
                     try:
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
                 
                     except Propka_Error:
                         logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")

@@ -5,6 +5,10 @@ Author  ==>> Matthew R. Hennefarth
 Date    ==>> April 16, 2020
 """
 
+#Utility Paths
+import phd3.utility.utilities as utilities
+config = utilities.load_phd_config()
+
 #Standard Library Imports
 import logging
 import os
@@ -154,6 +158,18 @@ class titrate_protein:
 
 
         logger.info("[propka]           ==>> SUCCESS")
+
+        #And run MSMS to generate the SAS if called for
+        if self._buried_cutoff == "sas":
+            try:
+                pdb_to_xyzrn_cmd = config["PATHS"]["MSMS_DIR"] + 'pdb_to_xyzrn _propka_inp.pdb > _msms_inp.xyzrn'
+                msms_cmd = config["PATHS"]["MSMS_DIR"] + 'msms.i86Linux2.2.6.1 -if _msms_inp.xyzrn -af _msms_out'
+                os.system(pdb_to_xyzrn_cmd)
+                os.system(msms_cmd)
+            except:
+                logger.error("Error running MSMS")
+                raise exceptions.MSMS_Error
+        
         #Now we move onto davids actual script for evaluation of the protons and what not
 
 
@@ -166,7 +182,10 @@ class titrate_protein:
         
         if os.path.isfile("inConstr") and self._step > 0:
             shutil.copy("inConstr", f"save/{self._step-1}.inConstr")
-
+        
+        if os.path.isfile("_msms_out.area"):
+            shutil.copy("_msms_out.area", f"save/{self._step}.area")
+            
         self._step += 1
 
         with open("_propka_inp.pdb", 'r') as in_pdb:
@@ -188,6 +207,9 @@ class titrate_protein:
             res.assign_pKa(calc_pKa_data)
 
         solv_data = montecarlo.find_solv_shell("_propka_inp.pka", chains)
+
+        if self._buried_cutoff == "sas":
+            msms_data = montecarlo.store_sas_area("_msms_out.area", chains)
         
         titr_stack = [] # Construct the stack form of all_titr_res for use in find_solv_shell
         for res in titratable_residues:
@@ -196,7 +218,10 @@ class titrate_protein:
         #Need to make a copy so that we don't accidently screw up out list
         #Should check this...i think we want a copy of a list, but it pointing to the same res in all_titr_res
         all_networks = montecarlo.define_aa_networks(titr_stack)
-        all_networks = montecarlo.find_network_solvent_access(all_networks, solv_data, self._buried_cutoff, self._partner_dist)
+        if self._buried_cutoff == "sas":
+            all_networks = montecarlo.find_network_solvent_access(all_networks, msms_data, self._buried_cutoff, self._partner_dist)
+        else:
+            all_networks = montecarlo.find_network_solvent_access(all_networks, solv_data, self._buried_cutoff, self._partner_dist)
         
         #Now we do monte carlo
         montecarlo.MC_prot_change(all_networks, self._pH)

@@ -26,6 +26,8 @@ amino_acids_3let = ['ALA', 'ARG', 'ASP', 'ASN', 'CYS', 'GLU', 'GLN', 'GLY', 'HIS
 amino_acids_3let += ['3CT'] # non-proteinogenic amino acid 3 letter codes
 # LIST: 3 letter codes for amino acids which are potentially titratable near physiological conditions
 titr_amino_acids_3let = ['ARG', 'ASP', 'CYS', 'GLU', 'HIS', 'LYS', 'TYR']
+# LIST: atoms that can lead to titration if they have SES surface area, includes additional bridging heteroatoms on ARG, ASP, GLU, HIS to make the regions continguous
+sas_atoms = ['ARG:NE', 'ARG:CZ', 'ARG:NH1', 'ARG:NH2', 'ASP:OD1', 'ASP:OD2', 'ASP:CG', 'CYS:SG', 'GLU:OE1', 'GLU:OE2', 'GLU:CD', 'HIS:ND1', 'HIS:NE2', 'HIS:CE1', 'LYS:NZ', 'TYR:OH']
 # LIST: protonation state 3 letter codes
 titr_forms_3let = ['ARG', 'ASP', 'CYS', 'GLU', 'HIS', 'HIE', 'HID', 'HIP', 'LYS', 'LYZ', 'TYR', 'TYH']
 titr_forms_3let = ['ASPH', 'GLUH']
