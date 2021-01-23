@@ -1129,7 +1129,7 @@ class setupDMDjob:
                     else:
                         inConstr_file.write(f"Deprotonate {pro_atom.write_inConstr()}\n")
 
-                if self._raw_parameters["Restrict Metal Ligands"]:
+                if "Restrict Metal Ligands" in self._raw_parameters.keys() and self._raw_parameters["Restrict Metal Ligands"]:
                     logger.debug("Restricting distance between atoms and metals!")
                     for metal in self._protein.metals:
                         logger.debug(f"Looking at metal: {metal}")
