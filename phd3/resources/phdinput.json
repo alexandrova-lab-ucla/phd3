@@ -46,7 +46,6 @@
             "Partner Distance": 3.5
         },
         "Freeze Non-Residues": true,
-        "Restrict Metal Ligands": true,
         "Custom protonation states": [
             ["A", 117, "deprotonate"],
             ["A", 117, "protonate"],
