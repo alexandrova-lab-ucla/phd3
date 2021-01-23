@@ -414,7 +414,7 @@ def valid_dmd_parameters(parameters: dict):
             raise ParameterError("Freeze Non-Residues MUST be a bool")
 
     if "Restrict Metal Ligands" not in parameters.keys():
-        raise ValueError("Missing Restrict Metal Ligands parameters")
+        pass
 
     else:
         try:
