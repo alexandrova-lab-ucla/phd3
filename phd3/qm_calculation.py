@@ -194,7 +194,7 @@ class TMcalculation:
 
     def _woelfling(self):
         logger.debug("Woelfling transition state")
-        self._run("woelfling-job > woelfling.out")
+        self._run("frozen_woelfling-job > woelfling.out")
                       
     def _forceopt(self, ex=False):
         """ Executes the commands (jobex) to perform a geometry optimization. Will resubmit if not done.
