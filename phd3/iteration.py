@@ -991,19 +991,20 @@ class iteration:
             if "sp_movie" in d:
                 logger.info(f"[Removing] ==>> {d}")
                 shutil.rmtree(d, ignore_errors=True)
+        
+        if os.path.isdir("dmd"):
+            for d in os.listdir("dmd"):
+                if "equilibrate" in d:
+                    logger.info(f"[Removing] ==>> {d}")
+                    shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
-        for d in os.listdir("dmd"):
-            if "equilibrate" in d:
-                logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(f"dmd/{d}", ignore_errors=True)
+                elif d.startswith("dmdstep_"):
+                    logger.info(f"[Removing] ==>> {d}")
+                    shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
-            elif d.startswith("dmdstep_"):
-                logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(f"dmd/{d}", ignore_errors=True)
-
-            elif d.startswith("core."):
-                logger.info(f"[Removing] ==>> {d}")
-                shutil.rmtree(f"dmd/{d}", ignore_errors=True)
+                elif d.startswith("core."):
+                    logger.info(f"[Removing] ==>> {d}")
+                    shutil.rmtree(f"dmd/{d}", ignore_errors=True)
 
         if os.path.isfile(f"dmd/{self.parameters['dmd params']['Movie File']}"):
             logger.info(f"[Compressing] ==>> {self.parameters['dmd params']['Movie File']}")
