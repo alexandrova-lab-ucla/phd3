@@ -195,7 +195,7 @@ class setupTMjob:
 
             else:
                 # Copy over a sample.json file
-                logger.warn("Could not find a defjinput.json file")
+                logger.warn("Could not find a definput.json file")
                 logger.info("Copying over a default definput.json file")
                 try:
                     shutil.copy(pkg_resources.resource_filename('phd3.resources', 'definput.json'), './')
@@ -322,6 +322,12 @@ class setupTMjob:
                 (atom1, atom2) = bond.split(',')
                 logger.debug(f"Freezing bond between {atom1} {atom2}")
                 self._state_responses["idef"].append(f"f stre {atom1} {atom2}")
+
+            if "freeze_dihedral" in self._raw_parameters["geometry"]['idef'].keys():
+                for dihedral in self._raw_parameters["geometry"]['idef']['freeze_dihedral']:
+                    (atom1, atom2, atom3, atom4) = dihedral.split(',')
+                    logger.debug(f"Freezing dihedral for {atom1} {atom2} {atom3} {atom4}")
+                    self._state_responses["idef"].append(f"f tors {atom1} {atom2} {atom3} {atom4}")
 
             self._state_responses["internal"].append("")
 

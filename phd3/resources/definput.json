@@ -6,7 +6,10 @@
 			"freeze_stretch" : [
 				"4,54",
 				"3,24"
-			]
+			],
+            "freeze_dihedral": [
+                "1,2,3,4"
+            ]
 		},
 		"ired" : true,
 		"iaut" : {

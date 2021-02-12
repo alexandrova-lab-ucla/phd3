@@ -97,10 +97,20 @@ def valid_qm_parameters(parameters: dict):
         for bond in parameters["geometry"]["idef"]["freeze_stretch"]:
             try:
                 atom1, atom2 = bond.split(',')
-                assert (atom1.isdigit())
-                assert (atom2.isdigit())
+                assert (atom1.isdigit() and int(atom1) >= 0)
+                assert (atom2.isdigit() and int(atom2) >= 0)
             except ValueError:
                 raise ParameterError(f"incorrect formatting of idef bonds : {bond}")
+
+        if "freeze_dihedral" in parameters["geometry"]["idef"].keys():
+            for dihedral in parameters["geometry"]["idef"]["freeze_dihedral"]:
+                try:
+                    atoms = dihedral.split(',')
+                    for a in atoms:
+                        assert(a.isdigit() and int(a) >= 0)
+
+                except ValueError:
+                    raise ParameterError(f"incorrect formatting of idef dihedral : {dihedral}")
 
     if parameters["geometry"]["iaut"]['iaut_on']:
         logger.debug("Checking iaut")
@@ -887,7 +897,7 @@ def print_header():
     main_logger.info("")
     main_logger.info("--------------------[Protein Hybrid Discrete Dynamics/DFT]--------------------")
     main_logger.info("")
-    main_logger.info("[Version]            ==>>    1.0.11")
+    main_logger.info("[Version]            ==>>    1.0.12")
     main_logger.info("")
     main_logger.info("[Idea and Director]  ==>>    Anastassia N. Alexandrova ")
     main_logger.info("[Idea and Director]  ==>>    Manuel Sparta")
