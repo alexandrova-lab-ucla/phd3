@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="phd3",
-    version="1.0.10",
+    version="1.0.11",
     author=["Matthew R. Hennefarth", "David J. Reilley"],
     package_data={'': ['*.json', '*.j2', '*.config']},
     packages=find_packages(),
