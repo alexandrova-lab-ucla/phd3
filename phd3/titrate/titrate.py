@@ -11,8 +11,9 @@ import os
 import shutil
 import pkg_resources
 
-#Rd Party Libraries
-import propka.molecular_container
+#3rd Party Libraries
+import propka
+from propka import run
 
 #Titrate/PHD3
 from . import montecarlo
@@ -34,7 +35,7 @@ PROTON_PARTNER_CUTOFF =3.5
 
 class titrate_protein:
 
-    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step", "_history"]
+    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step", "_history", "_default_protonation_states"]
 
     @staticmethod
     def expand_commands(parameters):
@@ -105,6 +106,13 @@ class titrate_protein:
         self._pH = parameters["pH"]
         self._buried_cutoff = parameters["Buried Cutoff"]
         self._partner_dist = parameters["Partner Distance"]
+        
+        if "Fixed States" in parameters.keys():
+            self._default_protonation_states = parameters["Fixed States"]
+        
+        else:
+            self._default_protonation_states = []
+
         self._history = []
 
         # Sets initial protonation states
@@ -121,29 +129,24 @@ class titrate_protein:
         else:
             self._step = 0
 
+    def history(self):
+        return self._history
+
     def evaluate_pkas(self, protein):
         #First we transform protein to Standard
         protein.relabel(format="Standard")
         
         protein.write_pdb("_propka_inp.pdb")
 
-        #Holds the default options for propka to use as an imported module
-        class option:
-            def __init__(self):
-                self.keep_protons = False
-                self.protonate_all = False
-                self.parameters = pkg_resources.resource_filename("propka", "propka.cfg")
-                self.chains = []
-                self.titrate_only = None
-                self.display_coupled_residues = False
-
         #Then we call propka from the import
 
+        if not hasattr(run, "single"):
+            logger.error("Propka not properly installed, or wrong version")
+            raise exceptions.Propka_Error
+
         try:
-            my_molecule = propka.molecular_container.Molecular_container("_propka_inp.pdb", option())
-            my_molecule.calculate_pka()
-            my_molecule.write_pka()
-        
+            my_molecule = run.single("_propka_inp.pdb")
+
         except:
             logger.error("Error running propka")
             raise exceptions.Propka_Error
@@ -222,6 +225,19 @@ class titrate_protein:
                     continue
                
                 change.extend([residue.chain, int(residue.res_num)])
+                
+                # We check to see if the residue is static in regard to the protonation state...
+                change_residue = protein.get_residue(change)
+                ignore = False
+                for default_state in self._default_protonation_states:
+                    default_state_residue = protein.get_residue(default_state)
+                    if change_residue == default_state_residue:
+                        logger.warn(f"Cannot change protonation state of static residue {default_state_residue}")
+                        ignore = True
+
+                if ignore:
+                    continue
+
                 change.append("protonate" if protonate else "deprotonate" )
                 
                 #Use -1 and -2 to deprotonate the C and N Terminus
@@ -267,11 +283,13 @@ class titrate_protein:
                                 break
 
                     if len(change) != 4:
-                        logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid}")
+                        logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid} {residue.res_num}")
                         continue
 
                 protonation_changes.append(change)
 
+        print(protonation_changes)
+        print("\n")
         for change in protonation_changes:
             residue = protein.get_residue(change[:2])
             for current in self._updated_protonation:
@@ -296,7 +314,8 @@ class titrate_protein:
                         self._updated_protonation.append([change[0], change[1], "protonate"])
                 
                 self._updated_protonation.append(change)
-                
+               
+        print(self._updated_protonation)
         if switch_his + remove:
             for switch in switch_his + remove:
                 switch_res = protein.get_residue(switch[:2])
@@ -307,6 +326,7 @@ class titrate_protein:
                         remove_index.append(i)
 
                 remove_index.reverse()
+                print(f"Removed {remove_index}")
                 [self._updated_protonation.pop(i) for i in remove_index]
 
         # Assign protonations to self._updated_protonation
@@ -318,8 +338,4 @@ class titrate_protein:
 
     def get_new_protonation_states(self):
         return self._updated_protonation if self._updated_protonation is not None else []
-
-    def get_protonation_history(self):
-        return self._history
-
 

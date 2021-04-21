@@ -875,6 +875,15 @@ def load_movie(movie_file:str):
         raise
 
     logger.debug("Successfully loaded in the file!")
+    if os.path.isfile("protonation_states.json"):
+        logger.debug("Found protonation_states file")
+        logger.debug("Loading in protonation states for each structure")
+        with open("protonation_states.json") as protonation_states:
+            states = json.load(protonation_states)
+
+        for struct, state in zip(proteins, states):
+            struct.protonation_states = state
+
     return proteins
 
 def last_frame(movie_file):

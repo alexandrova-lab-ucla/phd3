@@ -287,6 +287,16 @@ class dmd_simulation:
         elif self._titration is not None:
             self._raw_parameters["Commands"].clear()
 
+        if self._titration is not None:
+            out_dict = {"Custom protonation states":[]}
+            if os.path.isfile("protonation_states.json"):
+                with open("protonation_states.json") as old_data:
+                    out_dict = json.load(old_data)
+
+            out_dict["Custom protonation states"].extend(self._titration.history())
+            with open("protonation_states.json", 'w+') as new_data:
+                json.dump(out_dict, new_data, indent=4)
+
         with open("dmdinput.json", 'w') as dmdinput:
             logger.debug("Dumping to json")
             json.dump(self._raw_parameters, dmdinput, indent=4)
