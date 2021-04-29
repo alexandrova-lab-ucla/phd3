@@ -240,7 +240,10 @@ class dmd_simulation:
                         logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")
                                      
                 if os.path.isfile(updated_parameters['Restart File']):
+                    shutil.copy(updated_parameters['Restart File'], "restart_velocity_cycle") # For velocity transfer
                     logger.debug(f"Removing {updated_parameters['Restart File']} file")
+                    #shutil.copy(updated_parameters['Restart File'], "restart_velocity_cycle") # For velocity transfer
+                    #shutil.copy("dmd_restart", "restart_velocity_cycle")
                     os.remove(updated_parameters['Restart File'])
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
