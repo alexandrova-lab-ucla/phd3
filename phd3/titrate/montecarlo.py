@@ -366,6 +366,46 @@ def find_solv_shell(propka_file, chains):
     
     return solv_data
 
+def store_sas_area(sas_file, chains):
+    if not os.path.isfile(sas_file):
+        logger.error(f"File does not exist: {sas_file}")
+        raise FileNotFoundError(f"{sas_file}")
+
+    # Dictionary that stores sas sas surface area by residue name consistent with the established titr_res class
+    # NO CHAINS: Currently has no handling for systems of multiple chains, these are not labeled in the xyzrn file from MSMS and chains would have to be taken from the pdb separately
+    sas_data = {}
+    with open(sas_file, 'r') as sas_file:
+        curr_sas = 0.0
+        H_count = 0
+        last_res = ''
+        curr_res = ''
+
+        for line in sas_file:
+            line = line.split()
+            if len(line) == 4:
+                curr_data_entry = line[3].split('_')
+                curr_res = curr_data_entry[1] + curr_data_entry[2]
+                if curr_res != last_res:
+                    if last_res[:3] in titrate_data.titr_amino_acids_3let:
+                        sas_data[last_res + 'A'] = curr_sas
+                    last_res = curr_res
+                    curr_sas = 0.0
+                    H_count = 0
+                else:
+                    curr_atom_name = curr_data_entry[1] + ':' + curr_data_entry[0]
+                    if curr_atom_name in titrate_data.sas_atoms:
+                        curr_sas += float(line[2])
+                    elif curr_data_entry[0] == 'H': # With the format of _sas_inp.xyzrn, the first atom labeled 'H' is the backbone hydrogen, and the remaining hydrogen are the polar ones on the functional group that could be involved in titration
+                        if H_count > 0:
+                            curr_sas += float(line[2])
+                        H_count += 1
+
+        # And wrap up the last residue at the EOF
+        if last_res[:3] in titrate_data.titr_amino_acids_3let:
+            sas_data[last_res + 'A'] = curr_sas
+
+    return sas_data
+
 def define_aa_networks(all_titr_res):
     all_networks = []
     current_network = []
@@ -400,15 +440,32 @@ def define_aa_networks(all_titr_res):
 def find_network_solvent_access(old_networks, run_solv_data, solv_cutoff, solv_prob):
     new_networks = []
 
-    for network in old_networks:
-        for atom in network:
-            if atom.full_name in run_solv_data:
-                if run_solv_data[atom.full_name] < solv_cutoff:
-                    new_networks.append(["Solv", network])
-                    break
+    if solv_cutoff == 'sas':
+        for network in old_networks:
+            for atom in network:
+                #print(atom.full_name)
+                if atom.full_name in run_solv_data:
+                    #print(atom.full_name)
+                    #print(run_solv_data[atom.full_name])
+                    if run_solv_data[atom.full_name] > 0.0:
+                        #print('Solv')
+                        new_networks.append(["Solv", network])
+                        break
 
-        else:
-            new_networks.append(['NoSolv', network])
+            else:
+                #print('NoSolv')
+                new_networks.append(['NoSolv', network])
+                
+    else:
+        for network in old_networks:
+            for atom in network:
+                if atom.full_name in run_solv_data:
+                    if run_solv_data[atom.full_name] < solv_cutoff:
+                        new_networks.append(["Solv", network])
+                        break
+
+            else:
+                new_networks.append(['NoSolv', network])
 
     return new_networks
 

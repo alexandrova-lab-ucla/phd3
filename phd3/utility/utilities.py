@@ -701,7 +701,108 @@ def make_start_file(parameters: dict, start_time: int =0):
 
     logger.debug("made the start file!")
 
+def copy_restart_velocities(state_file, restart_file):
+    restart_velocities = []
+
+    with open(restart_file, "r+") as res_f:
+        read_velocity = False
+        for line in res_f.readlines():
+            split_line = line.split()
+
+            if read_velocity == True:
+                if split_line[0] == 'REACTIONED':
+                    read_velocity = False
+                    break
+
+                restart_velocities += [[int(split_line[9]), split_line[5][:-2], split_line[6][:-2], split_line[7][:-2]]]
+
+            else:
+                if split_line[0] == '#Format:':
+                    if split_line[1] == "AtomIndex":
+                        read_velocity = True
+
+    new_state_content = ''
+    with open(state_file, "r+") as sta_f:
+        change_velocity = False
+        atom_line_offset = 0
+        for idx, line in enumerate(sta_f):
+            split_line = line.split()
+            if change_velocity == True:
+                if int(split_line[9]) == restart_velocities[idx - atom_line_offset][0]:
+                    new_state_content += '  ' + split_line[0] + '  ' + split_line[1] + '  ' + split_line[2] + '  ' + split_line[3] + '  ' + split_line[4] + '  ' + restart_velocities[idx - atom_line_offset][1] + '  ' + restart_velocities[idx - atom_line_offset][2] + '  ' + restart_velocities[idx - atom_line_offset][3] + '  ' + split_line[8] + ' ' + split_line[9]
+                    new_state_content += '\n'
+                elif int(split_line[9]) == (restart_velocities[idx - atom_line_offset][0] + 1): # Any given residue should only vary by one atom, and residue numbers should only be offset by one number
+                    atom_line_offset -= 1
+                    new_state_content += '  ' + split_line[0] + '  ' + split_line[1] + '  ' + split_line[2] + '  ' + split_line[3] + '  ' + split_line[4] + '  ' + restart_velocities[idx - atom_line_offset][1] + ' ' + restart_velocities[idx - atom_line_offset][2] + '  ' + restart_velocities[idx - atom_line_offset][3] + '  ' + split_line[8] + ' ' + split_line[9]
+                    new_state_content += '\n'
+                elif (int(split_line[9]) + 1) == restart_velocities[idx - atom_line_offset][0]:
+                    new_state_content += '  ' + split_line[0] + '  ' + split_line[1] + '  ' + split_line[2] + '  ' + split_line[3] + '  ' + split_line[4] + '  ' + '0.0000000000000' + '  ' + '0.0000000000000' + '  ' + '0.0000000000000' + '  ' + split_line[8] + ' ' + split_line[9]
+                    new_state_content += '\n'
+                    atom_line_offset += 1
+                else: # Except if the last residue has a protonation state change immediately before the substrate
+                    if int(split_line[9]) < restart_velocities[idx - atom_line_offset][0]: # Any given residue should only vary by one atom, and residue numbers should only be offset by one number
+                        atom_line_offset -= 1
+                        new_state_content += '  ' + split_line[0] + '  ' + split_line[1] + '  ' + split_line[2] + '  ' + split_line[3] + '  ' + split_line[4] + '  ' + restart_velocities[idx - atom_line_offset][1] + '  ' + restart_velocities[idx - atom_line_offset][2] + '  ' + restart_velocities[idx - atom_line_offset][3] + '  ' + split_line[8] + ' ' + split_line[9]
+                        new_state_content += '\n'
+                    elif int(split_line[9]) > restart_velocities[idx - atom_line_offset][0]:
+                        new_state_content += '  ' + split_line[0] + '  ' + split_line[1] + '  ' + split_line[2] + '  ' + split_line[3] + '  ' + split_line[4] + '  ' + '0.0000000000000' + '  ' + '0.0000000000000' + '  ' + '0.0000000000000' + '  ' + split_line[8] + ' ' + split_line[9]
+                        new_state_content += '\n'
+                        atom_line_offset += 1
+            else:
+                new_state_content += line
+                if split_line[0] == 'ATOMS':
+                    change_velocity = True
+                    atom_line_offset = idx + 1
+
+    with open(state_file, "w+") as sta_of:
+        sta_of.write(new_state_content)
+
+
 def make_state_file(parameters: dict, pdbName):
+    '''
+    if os.path.exists("state"):
+        if os.path.exists("_last_old_state"):
+            old_count = 1
+            old_count_name = "_last_old_state_" + str(old_count)
+            while os.path.exists(old_count_name):
+                old_count += 1
+                old_count_name = "_last_old_state_" + str(old_count)
+            shutil.copy("state", old_count_name)
+        else:
+            shutil.copy("state", "_last_old_state")
+    else:
+        state_marker = open("_last_old_state", "a")
+        state_marker.write("no state file yet")
+        state_marker.close()
+    '''
+
+    if os.path.exists("restart_velocity_cycle"):
+        '''
+        if os.path.exists("_last_old_restart"):
+            old_count = 1
+            old_count_name = "_last_old_restart_" + str(old_count)
+            while os.path.exists(old_count_name):
+                old_count += 1
+                old_count_name = "_last_old_restart_" + str(old_count)
+            shutil.copy("restart_velocity_cycle", old_count_name)
+        else:
+        shutil.copy("restart_velocity_cycle", "_last_old_restart")
+        '''
+
+        if os.path.exists("_last_restart"):
+            #shutil.copy("_last_restart", "_last_old_restart")
+            os.remove("_last_restart")
+
+        shutil.copy("restart_velocity_cycle", "_last_restart")
+        os.remove("restart_velocity_cycle")
+
+    '''
+    else:
+        restart_marker = open("_last_old_restart", "a")
+        restart_marker.write("no restart file yet")
+        restart_marker.close()
+    '''
+
     logger.debug("Calling complex.linux")
     try:
         # There is an issue here with complex.linux not actually running
@@ -773,6 +874,25 @@ def make_state_file(parameters: dict, pdbName):
         raise
 
     logger.debug("Made the state file!")
+
+    if os.path.exists("state"):
+        '''
+        if os.path.exists("_last_new_state"):
+            new_count = 1
+            new_count_name = "_last_new_state_" + str(new_count)
+            while os.path.exists(new_count_name) == True:
+                new_count += 1
+                new_count_name = "_last_new_state_" + str(new_count)
+            shutil.copy("state", new_count_name)
+        else:
+            shutil.copy("state", "_last_new_state")
+        '''
+
+        # Copy velocities from restart into the new state file
+        if os.path.exists("_last_restart"):
+            shutil.copy("state", "_last_state")
+            copy_restart_velocities("state", "_last_restart")
+
 
 def make_movie(initial_pdb, movie_file, output_pdb, protonate=[]):
     """
