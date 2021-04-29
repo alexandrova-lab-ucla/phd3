@@ -288,19 +288,23 @@ class titrate_protein:
 
                 protonation_changes.append(change)
 
-        print(protonation_changes)
-        print("\n")
+        print(self._updated_protonation)
+        print("/n")
         for change in protonation_changes:
             residue = protein.get_residue(change[:2])
-            for current in self._updated_protonation:
+            for i,current in enumerate(self._updated_protonation):
                 current_residue = protein.get_residue(current[:2])
                 if residue == current_residue:
-                    current = change
+                    self._updated_protonation[i] = change
+                    #current = change
                     if residue.name.upper() == "HIS":
                         if change[2] == "protonate":
-                            self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                            print(f"Protonating his {change[1]}")
+                            #pass
+                            #self._updated_protonation.append([change[0], change[1], "deprotonate"])
                         
                         else:
+                            print(f"HHHHDeprotonating his {change[1]}")
                             self._updated_protonation.append([change[0], change[1], "protonate"])
                     
                     break
@@ -308,14 +312,18 @@ class titrate_protein:
             else:
                 if residue.name.upper() == "HIS":
                     if change[2] == "protonate":
-                        self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                        print(f"Protonating his {change[1]}")
+                        #pass
+                        #self._updated_protonation.append([change[0], change[1], "deprotonate"])
                     
                     else:
+                        print(f"BBBBDeprotonating his {change[1]}")
                         self._updated_protonation.append([change[0], change[1], "protonate"])
                 
                 self._updated_protonation.append(change)
-               
+        
         print(self._updated_protonation)
+
         if switch_his + remove:
             for switch in switch_his + remove:
                 switch_res = protein.get_residue(switch[:2])
@@ -326,12 +334,23 @@ class titrate_protein:
                         remove_index.append(i)
 
                 remove_index.reverse()
-                print(f"Removed {remove_index}")
                 [self._updated_protonation.pop(i) for i in remove_index]
 
         # Assign protonations to self._updated_protonation
         # List -> Tuple -> Set -> List to get rid of duplicates
         self._updated_protonation = [list(item) for item in set(tuple(row) for row in self._updated_protonation)]
+        for state in self._updated_protonation:
+            residue = protein.get_residue(state[:2])
+            if residue.name.upper() == "HIS" and state[2] == "deprotonate":
+                for other_state in self._updated_protonation:
+                    other_residue = protein.get_residue(other_state[:2])
+                    if residue == other_residue and other_state[2] == "protonate":
+                        break
+
+                else:
+                    print("BRUHHHH!!!!!!!")
+                    raise exceptions.Propka_Error
+
         self._history.append(self._updated_protonation.copy())
         return self._updated_protonation
 
