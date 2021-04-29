@@ -5,14 +5,19 @@ Author  ==>> Matthew R. Hennefarth
 Date    ==>> April 16, 2020
 """
 
+#Utility Paths
+import phd3.utility.utilities as utilities
+config = utilities.load_phd_config()
+
 #Standard Library Imports
 import logging
 import os
 import shutil
 import pkg_resources
 
-#Rd Party Libraries
-import propka.molecular_container
+#3rd Party Libraries
+import propka
+from propka import run
 
 #Titrate/PHD3
 from . import montecarlo
@@ -34,7 +39,7 @@ PROTON_PARTNER_CUTOFF =3.5
 
 class titrate_protein:
 
-    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step", "_history"]
+    __slots__ = ['_updated_protonation', '_pH', '_buried_cutoff', '_partner_dist', "_step", "_history", "_default_protonation_states"]
 
     @staticmethod
     def expand_commands(parameters):
@@ -105,6 +110,13 @@ class titrate_protein:
         self._pH = parameters["pH"]
         self._buried_cutoff = parameters["Buried Cutoff"]
         self._partner_dist = parameters["Partner Distance"]
+        
+        if "Fixed States" in parameters.keys():
+            self._default_protonation_states = parameters["Fixed States"]
+        
+        else:
+            self._default_protonation_states = []
+
         self._history = []
 
         # Sets initial protonation states
@@ -121,29 +133,24 @@ class titrate_protein:
         else:
             self._step = 0
 
+    def history(self):
+        return self._history
+
     def evaluate_pkas(self, protein):
         #First we transform protein to Standard
         protein.relabel(format="Standard")
         
         protein.write_pdb("_propka_inp.pdb")
 
-        #Holds the default options for propka to use as an imported module
-        class option:
-            def __init__(self):
-                self.keep_protons = False
-                self.protonate_all = False
-                self.parameters = pkg_resources.resource_filename("propka", "propka.cfg")
-                self.chains = []
-                self.titrate_only = None
-                self.display_coupled_residues = False
-
         #Then we call propka from the import
 
+        if not hasattr(run, "single"):
+            logger.error("Propka not properly installed, or wrong version")
+            raise exceptions.Propka_Error
+
         try:
-            my_molecule = propka.molecular_container.Molecular_container("_propka_inp.pdb", option())
-            my_molecule.calculate_pka()
-            my_molecule.write_pka()
-        
+            my_molecule = run.single("_propka_inp.pdb")
+
         except:
             logger.error("Error running propka")
             raise exceptions.Propka_Error
@@ -154,6 +161,18 @@ class titrate_protein:
 
 
         logger.info("[propka]           ==>> SUCCESS")
+
+        #And run MSMS to generate the SAS if called for
+        if self._buried_cutoff == "sas":
+            try:
+                pdb_to_xyzrn_cmd = config["PATHS"]["MSMS_DIR"] + 'pdb_to_xyzrn _propka_inp.pdb > _msms_inp.xyzrn'
+                msms_cmd = config["PATHS"]["MSMS_DIR"] + 'msms.i86Linux2.2.6.1 -if _msms_inp.xyzrn -af _msms_out'
+                os.system(pdb_to_xyzrn_cmd)
+                os.system(msms_cmd)
+            except:
+                logger.error("Error running MSMS")
+                raise exceptions.MSMS_Error
+        
         #Now we move onto davids actual script for evaluation of the protons and what not
 
 
@@ -166,13 +185,31 @@ class titrate_protein:
         
         if os.path.isfile("inConstr") and self._step > 0:
             shutil.copy("inConstr", f"save/{self._step-1}.inConstr")
-
+        
+        if os.path.isfile("_msms_out.area"):
+            shutil.copy("_msms_out.area", f"save/{self._step}.area")
+            
         self._step += 1
 
         with open("_propka_inp.pdb", 'r') as in_pdb:
             #Get all of the titratable residues as a list
             titratable_residues = montecarlo.process_pdb(in_pdb.readlines())
         
+        ## REMOVE THE RESIDUES HERE THAT ARE STATIC
+
+        remove_residues = []
+        logger.debug("Removing static protonation state residues...")
+        for i, titratable_residue in enumerate(titratable_residues):
+            residue = protein.get_residue([titratable_residue.chain, int(titratable_residue.res_num)])
+            for default_state in self._default_protonation_states:
+                default_state_residue = protein.get_residue(default_state)
+                if residue == default_state_residue:
+                    remove_residues.append(i)
+
+        remove_residues.reverse()
+        [titratable_residues.pop(i) for i in remove_residues]
+
+
         #Define connections between residues
         montecarlo.define_connections(titratable_residues, PROTON_PARTNER_CUTOFF)
         
@@ -188,6 +225,9 @@ class titrate_protein:
             res.assign_pKa(calc_pKa_data)
 
         solv_data = montecarlo.find_solv_shell("_propka_inp.pka", chains)
+
+        if self._buried_cutoff == "sas":
+            msms_data = montecarlo.store_sas_area("_msms_out.area", chains)
         
         titr_stack = [] # Construct the stack form of all_titr_res for use in find_solv_shell
         for res in titratable_residues:
@@ -196,7 +236,10 @@ class titrate_protein:
         #Need to make a copy so that we don't accidently screw up out list
         #Should check this...i think we want a copy of a list, but it pointing to the same res in all_titr_res
         all_networks = montecarlo.define_aa_networks(titr_stack)
-        all_networks = montecarlo.find_network_solvent_access(all_networks, solv_data, self._buried_cutoff, self._partner_dist)
+        if self._buried_cutoff == "sas":
+            all_networks = montecarlo.find_network_solvent_access(all_networks, msms_data, self._buried_cutoff, self._partner_dist)
+        else:
+            all_networks = montecarlo.find_network_solvent_access(all_networks, solv_data, self._buried_cutoff, self._partner_dist)
         
         #Now we do monte carlo
         montecarlo.MC_prot_change(all_networks, self._pH)
@@ -222,6 +265,19 @@ class titrate_protein:
                     continue
                
                 change.extend([residue.chain, int(residue.res_num)])
+                
+                # We check to see if the residue is static in regard to the protonation state...
+                # change_residue = protein.get_residue(change)
+                # ignore = False
+                # for default_state in self._default_protonation_states:
+                    # default_state_residue = protein.get_residue(default_state)
+                    # if change_residue == default_state_residue:
+                        # logger.warn(f"Cannot change protonation state of static residue {default_state_residue}")
+                        # ignore = True
+
+                # if ignore:
+                    # continue
+
                 change.append("protonate" if protonate else "deprotonate" )
                 
                 #Use -1 and -2 to deprotonate the C and N Terminus
@@ -267,20 +323,21 @@ class titrate_protein:
                                 break
 
                     if len(change) != 4:
-                        logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid}")
+                        logger.warn(f"Cannot change protonation state of atom {residue.change_heteroatom[0]} in res {residue.amino_acid} {residue.res_num}")
                         continue
 
                 protonation_changes.append(change)
 
         for change in protonation_changes:
             residue = protein.get_residue(change[:2])
-            for current in self._updated_protonation:
+            for i,current in enumerate(self._updated_protonation):
                 current_residue = protein.get_residue(current[:2])
                 if residue == current_residue:
-                    current = change
+                    self._updated_protonation[i] = change
+                    #current = change
                     if residue.name.upper() == "HIS":
                         if change[2] == "protonate":
-                            self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                            pass
                         
                         else:
                             self._updated_protonation.append([change[0], change[1], "protonate"])
@@ -290,13 +347,14 @@ class titrate_protein:
             else:
                 if residue.name.upper() == "HIS":
                     if change[2] == "protonate":
-                        self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                        pass
                     
                     else:
                         self._updated_protonation.append([change[0], change[1], "protonate"])
                 
                 self._updated_protonation.append(change)
-                
+        
+
         if switch_his + remove:
             for switch in switch_his + remove:
                 switch_res = protein.get_residue(switch[:2])
@@ -312,14 +370,22 @@ class titrate_protein:
         # Assign protonations to self._updated_protonation
         # List -> Tuple -> Set -> List to get rid of duplicates
         self._updated_protonation = [list(item) for item in set(tuple(row) for row in self._updated_protonation)]
+        for state in self._updated_protonation:
+            residue = protein.get_residue(state[:2])
+            if residue.name.upper() == "HIS" and state[2] == "deprotonate":
+                for other_state in self._updated_protonation:
+                    other_residue = protein.get_residue(other_state[:2])
+                    if residue == other_residue and other_state[2] == "protonate":
+                        break
+
+                else:
+                    print("BRUHHHH!!!!!!!")
+                    raise exceptions.Propka_Error
+
         self._history.append(self._updated_protonation.copy())
         return self._updated_protonation
 
 
     def get_new_protonation_states(self):
         return self._updated_protonation if self._updated_protonation is not None else []
-
-    def get_protonation_history(self):
-        return self._history
-
 

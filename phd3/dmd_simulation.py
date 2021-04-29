@@ -188,6 +188,7 @@ class dmd_simulation:
                     #TODO, check if this raises any exceptions, and if so, bo back a step
                     try:
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
 
                     except Propka_Error:
                         #grab last initial.pdb, echo and movie.pdb and place over current initial, echo, and movie.pdb and
@@ -205,6 +206,7 @@ class dmd_simulation:
                         self._start_time -= updated_parameters["Time"]
                         repeat = True
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
 
                     else:
                         if not repeat:
@@ -230,12 +232,16 @@ class dmd_simulation:
                     last_frame = utilities.load_pdb("initial.pdb")
                     try:
                         updated_parameters["Custom protonation states"] = self._titration.evaluate_pkas(last_frame)
+                        #updated_parameters["Custom protonation states"] = {} # TITR RESTART TEST
                 
                     except Propka_Error:
                         logger.warn("Propka run weirdly, though hopefully it doesn't matter since we skip!")
                                      
                 if os.path.isfile(updated_parameters['Restart File']):
+                    shutil.copy(updated_parameters['Restart File'], "restart_velocity_cycle") # For velocity transfer
                     logger.debug(f"Removing {updated_parameters['Restart File']} file")
+                    #shutil.copy(updated_parameters['Restart File'], "restart_velocity_cycle") # For velocity transfer
+                    #shutil.copy("dmd_restart", "restart_velocity_cycle")
                     os.remove(updated_parameters['Restart File'])
 
                 sj = setupDMDjob(parameters=updated_parameters, pro=last_frame)
@@ -286,6 +292,16 @@ class dmd_simulation:
 
         elif self._titration is not None:
             self._raw_parameters["Commands"].clear()
+
+        if self._titration is not None:
+            out_dict = {"Custom protonation states":[]}
+            if os.path.isfile("protonation_states.json"):
+                with open("protonation_states.json") as old_data:
+                    out_dict = json.load(old_data)
+
+            out_dict["Custom protonation states"].extend(self._titration.history())
+            with open("protonation_states.json", 'w+') as new_data:
+                json.dump(out_dict, new_data, indent=4)
 
         with open("dmdinput.json", 'w') as dmdinput:
             logger.debug("Dumping to json")
