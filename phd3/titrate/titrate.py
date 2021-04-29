@@ -197,6 +197,19 @@ class titrate_protein:
         
         ## REMOVE THE RESIDUES HERE THAT ARE STATIC
 
+        remove_residues = []
+        logger.debug("Removing static protonation state residues...")
+        for i, titratable_residue in enumerate(titratable_residues):
+            residue = protein.get_residue([titratable_residue.chain, int(titratable_residue.res_num)])
+            for default_state in self._default_protonation_states:
+                default_state_residue = protein.get_residue(default_state)
+                if residue == default_state_residue:
+                    remove_residues.append(i)
+
+        remove_residues.reverse()
+        [titratable_residues.pop(i) for i in remove_residues]
+
+
         #Define connections between residues
         montecarlo.define_connections(titratable_residues, PROTON_PARTNER_CUTOFF)
         
@@ -254,16 +267,16 @@ class titrate_protein:
                 change.extend([residue.chain, int(residue.res_num)])
                 
                 # We check to see if the residue is static in regard to the protonation state...
-                change_residue = protein.get_residue(change)
-                ignore = False
-                for default_state in self._default_protonation_states:
-                    default_state_residue = protein.get_residue(default_state)
-                    if change_residue == default_state_residue:
-                        logger.warn(f"Cannot change protonation state of static residue {default_state_residue}")
-                        ignore = True
+                # change_residue = protein.get_residue(change)
+                # ignore = False
+                # for default_state in self._default_protonation_states:
+                    # default_state_residue = protein.get_residue(default_state)
+                    # if change_residue == default_state_residue:
+                        # logger.warn(f"Cannot change protonation state of static residue {default_state_residue}")
+                        # ignore = True
 
-                if ignore:
-                    continue
+                # if ignore:
+                    # continue
 
                 change.append("protonate" if protonate else "deprotonate" )
                 
@@ -315,8 +328,6 @@ class titrate_protein:
 
                 protonation_changes.append(change)
 
-        print(self._updated_protonation)
-        print("/n")
         for change in protonation_changes:
             residue = protein.get_residue(change[:2])
             for i,current in enumerate(self._updated_protonation):
@@ -326,12 +337,9 @@ class titrate_protein:
                     #current = change
                     if residue.name.upper() == "HIS":
                         if change[2] == "protonate":
-                            print(f"Protonating his {change[1]}")
-                            #pass
-                            #self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                            pass
                         
                         else:
-                            print(f"HHHHDeprotonating his {change[1]}")
                             self._updated_protonation.append([change[0], change[1], "protonate"])
                     
                     break
@@ -339,17 +347,13 @@ class titrate_protein:
             else:
                 if residue.name.upper() == "HIS":
                     if change[2] == "protonate":
-                        print(f"Protonating his {change[1]}")
-                        #pass
-                        #self._updated_protonation.append([change[0], change[1], "deprotonate"])
+                        pass
                     
                     else:
-                        print(f"BBBBDeprotonating his {change[1]}")
                         self._updated_protonation.append([change[0], change[1], "protonate"])
                 
                 self._updated_protonation.append(change)
         
-        print(self._updated_protonation)
 
         if switch_his + remove:
             for switch in switch_his + remove:

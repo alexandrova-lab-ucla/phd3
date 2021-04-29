@@ -145,8 +145,6 @@ class dmd_simulation:
                 
                 if os.path.isfile(updated_parameters["Movie File"]):
                     utilities.make_movie("initial.pdb", updated_parameters["Movie File"], "_tmpMovie.pdb")
-                    print('Movie file name: ')
-                    print(updated_parameters["Movie File"])
                     #Append to movie
                     with open("_tmpMovie.pdb", 'r') as tmpMovie, open("movie.pdb", 'a') as movie:
                         for line in tmpMovie:
