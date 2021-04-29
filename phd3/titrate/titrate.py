@@ -176,6 +176,8 @@ class titrate_protein:
             #Get all of the titratable residues as a list
             titratable_residues = montecarlo.process_pdb(in_pdb.readlines())
         
+        ## REMOVE THE RESIDUES HERE THAT ARE STATIC
+
         #Define connections between residues
         montecarlo.define_connections(titratable_residues, PROTON_PARTNER_CUTOFF)
         
