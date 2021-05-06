@@ -22,3 +22,6 @@ class DefineError(Exception):
 
 class Propka_Error(Exception):
     pass
+
+class MSMS_Error(Exception):
+    pass

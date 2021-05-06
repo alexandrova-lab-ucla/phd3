@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="phd3",
-    version="1.0.10",
+    version="1.1.0",
     author=["Matthew R. Hennefarth", "David J. Reilley"],
     package_data={'': ['*.json', '*.j2', '*.config']},
     packages=find_packages(),
-    install_requires=[ 'jinja2', 'sklearn', 'propka', 'numpy>=1.18.0', 'hdbscan', 'scipy==1.1.0'], 
+    install_requires=[ 'jinja2', 'sklearn', 'propka', 'numpy>=1.20.0', 'hdbscan', 'scipy==1.1.0'], 
     entry_points = {
         'console_scripts' : [
             'setupphd.py=phd3.bin.setupphd:main',
