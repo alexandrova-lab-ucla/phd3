@@ -145,7 +145,7 @@ class iteration:
         logger.info("====================[Beginning DMD]====================")
         logger.info("")
 
-        if self.iter_number == 0:
+        if self.iter_number == -1:
             logger.info("On iteration 0, we skip the DMD portion")
             logger.info("and go straight to QM Optimization!")
             self.pdb_winner = [utilities.load_pdb(self.parameters["last pdb"]), 0.0]
