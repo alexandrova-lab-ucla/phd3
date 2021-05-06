@@ -377,7 +377,7 @@ class iteration:
             else:
                 if os.path.isdir("equilibrate"):
                     logger.debug("Copying equilibrate files to new dmd start")
-                    for f in [d for d in os.listdir('equilibrate') if os.path.isfile(d)]:
+                    for f in [d for d in os.listdir('equilibrate') if os.path.isfile(os.path.join("equilibrate",d))]:
                         shutil.copy(os.path.join("equilibrate", f), "./")
 
                     logger.debug("Removing echo and movie file from directory")
