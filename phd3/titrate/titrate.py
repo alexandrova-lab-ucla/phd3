@@ -166,7 +166,7 @@ class titrate_protein:
         if self._buried_cutoff == "sas":
             try:
                 pdb_to_xyzrn_cmd = config["PATHS"]["MSMS_DIR"] + 'pdb_to_xyzrn _propka_inp.pdb > _msms_inp.xyzrn'
-                msms_cmd = config["PATHS"]["MSMS_DIR"] + 'msms.i86Linux2.2.6.1 -if _msms_inp.xyzrn -af _msms_out'
+                msms_cmd = config["PATHS"]["MSMS_DIR"] + 'msms.x86_64Linux2.2.6.1 -if _msms_inp.xyzrn -af _msms_out'
                 os.system(pdb_to_xyzrn_cmd)
                 os.system(msms_cmd)
             except:
