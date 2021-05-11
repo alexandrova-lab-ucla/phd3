@@ -759,36 +759,7 @@ def copy_restart_velocities(state_file, restart_file):
 
 
 def make_state_file(parameters: dict, pdbName):
-    '''
-    if os.path.exists("state"):
-        if os.path.exists("_last_old_state"):
-            old_count = 1
-            old_count_name = "_last_old_state_" + str(old_count)
-            while os.path.exists(old_count_name):
-                old_count += 1
-                old_count_name = "_last_old_state_" + str(old_count)
-            shutil.copy("state", old_count_name)
-        else:
-            shutil.copy("state", "_last_old_state")
-    else:
-        state_marker = open("_last_old_state", "a")
-        state_marker.write("no state file yet")
-        state_marker.close()
-    '''
-
     if os.path.exists("restart_velocity_cycle"):
-        '''
-        if os.path.exists("_last_old_restart"):
-            old_count = 1
-            old_count_name = "_last_old_restart_" + str(old_count)
-            while os.path.exists(old_count_name):
-                old_count += 1
-                old_count_name = "_last_old_restart_" + str(old_count)
-            shutil.copy("restart_velocity_cycle", old_count_name)
-        else:
-        shutil.copy("restart_velocity_cycle", "_last_old_restart")
-        '''
-
         if os.path.exists("_last_restart"):
             #shutil.copy("_last_restart", "_last_old_restart")
             os.remove("_last_restart")
@@ -796,12 +767,6 @@ def make_state_file(parameters: dict, pdbName):
         shutil.copy("restart_velocity_cycle", "_last_restart")
         os.remove("restart_velocity_cycle")
 
-    '''
-    else:
-        restart_marker = open("_last_old_restart", "a")
-        restart_marker.write("no restart file yet")
-        restart_marker.close()
-    '''
 
     logger.debug("Calling complex.linux")
     try:
@@ -811,7 +776,7 @@ def make_state_file(parameters: dict, pdbName):
         # Jack thinks it is the segfault mike wrote in his HACK ALERT section
         # I have emailed the Dohkyan group regarding it...its only for certain pdbs...
         with Popen(
-                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex.linux')} -P {phd_config['PATHS']['parameters']} -I {pdbName} -T topparam -D 200 -p param -s state -C inConstr -c outConstr",
+                f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex.linux')} -P {phd_config['PATHS']['parameters']} -I {pdbName} -T topparam -D 200 -p param -s state -C inConstr -c outConstr 2> complex.linux.err",
                 stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True, env=os.environ) as shell:
             while shell.poll() is None:
                 logger.debug(shell.stdout.readline().strip())
@@ -857,7 +822,7 @@ def make_state_file(parameters: dict, pdbName):
                         mf.write(f"{bond[0]}\t{bond[1]}\t{bond[2]}\t{bond[3]}\n")
 
             with Popen(
-                    f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex.linux')} -P {phd_config['PATHS']['parameters']} -I {pdbName} -T topparam -D 200 -p param -s state -C inConstr -c outConstr",
+                    f"{os.path.join(phd_config['PATHS']['DMD_DIR'], 'complex.linux')} -P {phd_config['PATHS']['parameters']} -I {pdbName} -T topparam -D 200 -p param -s state -C inConstr -c outConstr 2> complex.linux.err",
                     stdout=PIPE, stderr=subprocess.STDOUT, universal_newlines=True, shell=True,
                     env=os.environ) as shell:
                 while shell.poll() is None:
