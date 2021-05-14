@@ -861,8 +861,8 @@ class iteration:
 
         self.pdb_winner = winning_struct
 
-        self.pdb_winner[0].reformat_protein()
-        self.pdb_winner[0].write_pdb("dmdWinner.pdb")
+        self.pdb_winner.reformat_protein()
+        self.pdb_winner.write_pdb("dmdWinner.pdb")
 
         logger.info("")
         logger.info("===================[Finished  QM SP]===================")
