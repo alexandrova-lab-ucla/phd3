@@ -388,7 +388,7 @@ class iteration:
                 logger.info(">>>> Run 01 >>>>")
                 calc = dmd_simulation(
                     cores=self.cores, parameters=self.parameters["dmd params"], run_dir=self.scratch)
-                self.final_dmd_average_energy = dmd_simulation.get_average_potential_energy()
+                self.final_dmd_average_energy = dmd_simulation.get_average_potential_energy(self.parameters["dmd params"]["Echo File"])
                 self.stop = self.timer_went_off()
 
         if self.stop:
@@ -834,15 +834,14 @@ class iteration:
         logger.info(">>>> Scoring Structures >>>>")
 
         # We are done with all sp calculations now, onto scoring the structures
-        min_dmd = min(self.sp_PDB_structures,
-                      lambda i: i.dmd_energy).dmd_energy
-        min_qm = min(self.sp_PDB_structures, lambda i: i.qm_energy).qm_energy
+        min_dmd = min(self.sp_PDB_structures, key=lambda i: i.dmd_energy).dmd_energy
+        min_qm = min(self.sp_PDB_structures, key=lambda i: i.qm_energy).qm_energy
 
         # TODO change the 0.5 to some value that is stored in .phd
         [struct.calc_score(min_dmd, min_qm, dmd_weight=0.5)
          for struct in self.sp_PDB_structures]
 
-        winning_struct = min(self.sp_PDB_structures, lambda i: i.score)
+        winning_struct = min(self.sp_PDB_structures, key=lambda i: i.score)
 
         logger.info(
             f"[movie_####]------[DMD Inst. Pot (kcal)]------[QM Energy (Hart)]-----------[Score]------")
