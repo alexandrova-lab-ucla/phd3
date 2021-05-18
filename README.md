@@ -1,6 +1,8 @@
 # phd3
 Protein Hybrid Discrete Dynamics/DFT. Quantum Mechanical/Discrete Molecular Dynamics engine to provide rapid sampling of metalloenzymes.
 
+![QM-DMD](docs/img/Figure_QMMM.jpeg)
+
 ## System Requirements
 - [TURBOMOLE](https://www.turbomole.org/) Version 6.6
 - [piDMD](http://www.moleculesinaction.com/pdmd.html)
