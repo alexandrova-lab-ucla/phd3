@@ -6,7 +6,7 @@ Protein Hybrid Discrete Dynamics/DFT. Quantum Mechanical/Discrete Molecular Dyna
 ## System Requirements
 - [TURBOMOLE](https://www.turbomole.org/) Version 6.6
 - [piDMD](http://www.moleculesinaction.com/pdmd.html)
-- [Openbabe](http://openbabel.org/wiki/Main_Page) Version 2.4.0
+- [Openbabel](http://openbabel.org/wiki/Main_Page) Version 2.4.0
 - [Chimera](https://www.cgl.ucsf.edu/chimera/) Version 1.6.0 or greater (1.15.0 or greater recommended)
 - Python Version 3.6 or greater (3.8 or greater recommended)
 
