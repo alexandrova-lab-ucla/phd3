@@ -904,7 +904,7 @@ def make_movie(initial_pdb, movie_file, output_pdb, protonate=[]):
                     logger.error(f"Skipping {p}")
                     continue
 
-                pro = addH(pro)
+                pro = addH(pro, remove_h=False)
                 pro.write_pdb(name=f"{output_pdb.split('.')[0]}_{index}.pdb")
 
 
@@ -1097,7 +1097,6 @@ def addH(protein):
     chimera_path = phd_config["PATHS"]["chimera"]
 
     protein.reformat_protein()
-    protein.remove_h()
     protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
 
     with open("chimeraaddh.com", "w") as comfile:
