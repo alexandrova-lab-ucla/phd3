@@ -66,7 +66,7 @@ See the wiki for a detailed user guide.
 ## Citation
 Please cite the following papers if you use QM/DMD in your research on top of the TURBOMOLE and piDMD citations.
 
-    M. Spart, D. Shirvanyants, F. Ding, N. V. Dokholyan, A. N. Alexandrova. "Hybrid Dynamics Simulation Engine for Metalloproteins" Biophys J 103: 4 (2012).
+    M. Sparta, D. Shirvanyants, F. Ding, N. V. Dokholyan, A. N. Alexandrova. "Hybrid Dynamics Simulation Engine for Metalloproteins" Biophys J 103: 4 (2012).
     
     N. M. Gallup, A. N. Alexandrova. "Use of QM/DMD as a Multiscale Approach to Modeling Metalloenzymes" Methods Enzymol 577 (2016).
    
