@@ -61,7 +61,7 @@ The following scripts are available after installation
 - `m2p.py`
 - `cutqm.py`
 
-See the wiki for a detailed user guide.
+See the [wiki](https://github.com/alexandrova-lab-ucla/phd3/wiki) for a detailed user guide on how to run various calculations.
 
 ## Citation
 Please cite the following papers if you use QM/DMD in your research on top of the TURBOMOLE and piDMD citations.
