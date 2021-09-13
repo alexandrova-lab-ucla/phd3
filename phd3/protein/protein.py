@@ -256,7 +256,7 @@ class Protein:
         self._logger.error("Could not find the requested chain")
         raise ValueError
 
-    def write_pdb(self, name=None, exclude_sub_chain=False, append=False):
+    def write_pdb(self, name=None, exclude_sub_chain=False, hydrogens=True, append=False):  # Jack's edit to allow removal of hydrogens
         if name is None:
             name = self.name
 
@@ -270,7 +270,8 @@ class Protein:
                 for chain in self.chains[:-1]:
                     for residue in chain.residues:
                         for atom in residue.atoms:
-                            pdb.write(atom.pdb_line())
+                            if atom.element.lower() != 'h' or hydrogens:  # Jack's edit to allow removal of hydrogens
+                                pdb.write(atom.pdb_line())
                     pdb.write('TER\n')
 
                 if self.sub_chain.residues:
