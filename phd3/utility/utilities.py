@@ -1097,7 +1097,7 @@ def addH(protein):
     chimera_path = phd_config["PATHS"]["chimera"]
 
     protein.reformat_protein()
-    protein.write_pdb("_temp.pdb", exclude_sub_chain=True)
+    protein.write_pdb("_temp.pdb", exclude_sub_chain=True, hydrogens=False). # hydrogens=False is Jack's edit
 
     with open("chimeraaddh.com", "w") as comfile:
         comfile.write("open _temp.pdb\n")
