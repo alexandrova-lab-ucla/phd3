@@ -524,7 +524,7 @@ class Protein:
 
         successful = False
 
-        with Popen(f"babel bond.pdb bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
+        with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
                    universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
             while shell.poll() is None:
                 self._logger.debug(shell.stdout.readline().strip())
