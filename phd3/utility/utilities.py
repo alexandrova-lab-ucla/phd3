@@ -607,7 +607,7 @@ def make_mol2(res: residue, reformat: bool=True):
 
         mol2_file.write('TER\nENDMDL')
     # Now we execute the babel command here
-    with Popen(f"babel {res.name}.pdb {res.name}.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
+    with Popen(f"obabel -i pdb {res.name}.pdb -o mol2 -O {res.name}.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
                universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
         while shell.poll() is None:
             logger.debug(shell.stdout.readline().strip())
