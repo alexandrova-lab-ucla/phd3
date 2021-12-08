@@ -525,21 +525,23 @@ class Protein:
         successful = False
 
         try:
-            with Popen(f"obabel -i pdb {res.name}.pdb -o mol2 -O {res.name}.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                        universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
+            with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                       universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
                 while shell.poll() is None:
-                    logger.debug(shell.stdout.readline().strip())
+                    self._logger.debug(shell.stdout.readline().strip())
                     output = shell.stderr.readline().strip()
-                    logger.debug(output)
+                    output += shell.stdout.readline().strip()
+                    self._logger.debug(output)
                     if "1 molecule converted" in output:
                         successful = True
         except:
-            with Popen(f"babel {res.name}.pdb {res.name}.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
+            with Popen(f"babel bond.pdb bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
                        universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
                 while shell.poll() is None:
-                    logger.debug(shell.stdout.readline().strip())
+                    self._logger.debug(shell.stdout.readline().strip())
                     output = shell.stderr.readline().strip()
-                    logger.debug(output)
+                    output += shell.stdout.readline().strip()
+                    self._logger.debug(output)
                     if "1 molecule converted" in output:
                         successful = True
 
