@@ -524,17 +524,17 @@ class Protein:
 
         successful = False
 
-        try:
-            with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                       universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
-                while shell.poll() is None:
-                    self._logger.debug(shell.stdout.readline().strip())
-                    output = shell.stderr.readline().strip()
-                    output += shell.stdout.readline().strip()
-                    self._logger.debug(output)
-                    if "1 molecule converted" in output:
-                        successful = True
-        except:
+        with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                   universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
+            while shell.poll() is None:
+                self._logger.debug(shell.stdout.readline().strip())
+                output = shell.stderr.readline().strip()
+                output += shell.stdout.readline().strip()
+                self._logger.debug(output)
+                if "1 molecule converted" in output:
+                    successful = True
+
+        if not successful:
             with Popen(f"babel bond.pdb bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
                        universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
                 while shell.poll() is None:
