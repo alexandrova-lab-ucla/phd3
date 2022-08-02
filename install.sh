@@ -17,7 +17,7 @@
 # unless you move your TURBOMOLE or DMD directories. 
 #
 # Additionally, if you will be using the built-in auto resubmitter, then you 
-# will need to place a submit.j2 file in the .phd3 directory that will act 
+# will need to place a submit.j2 file in the .config/phd3 directory that will act 
 # as a template for submission. Albeit, there are several places where you need 
 # to supply variables for PHD3 to fill in. These are denoted by {{ option }}. 
 # Feel free to view the sample submit.j2 in phd3/templates directory (UGE 
