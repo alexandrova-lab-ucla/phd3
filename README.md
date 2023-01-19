@@ -33,7 +33,12 @@ Then, edit the `phd_config.json` file so that all of the paths in the `PATHS` se
 If you are using phd3 on a cluster with queuing, you can modify the QUEUING section as well. Next we make a directory in `~/.config` and moves some files there as
 
     mkdir ${HOME}/.config/phd3
-    mv phd_config.json logger_config.json ${HOME}/.config/phd3
+    mv phd_config.json logger_config.json phd3/templates/submit.j2 ${HOME}/.config/phd3
+    
+In order to prevent Turbomole from failing, you may need to add the following to your .bashrc. This tells the CPU to use a math library that TURBOMOLE depends on. If this is not used, TURBOMOLE will segfault, even in define.
+
+    module load mkl
+    export MKL_DEBUG_CPU_TYPE=5
 
 Finally, we use pip3 to install
 
