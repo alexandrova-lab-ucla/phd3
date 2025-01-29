@@ -10,7 +10,7 @@ import pkg_resources
 import csv
 import os
 import numpy as np
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 
 # PHD3 Imports
 from ..utility import constants
@@ -524,15 +524,19 @@ class Protein:
 
         successful = False
 
-        with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                   universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
-            while shell.poll() is None:
-                self._logger.debug(shell.stdout.readline().strip())
-                output = shell.stderr.readline().strip()
-                output += shell.stdout.readline().strip()
-                self._logger.debug(output)
-                if "1 molecule converted" in output:
-                    successful = True
+        tries = 0
+        while not successful and tries < 10:
+            output = ""
+            with Popen(f"obabel -i pdb bond.pdb -o mol2 -O bond.mol2", stdin=PIPE, stdout=PIPE, stderr=STDOUT,
+                       universal_newlines=True, shell=True, bufsize=1, env=os.environ) as shell:
+                while shell.poll() is None:
+
+                    output = shell.stdout.readline().strip()
+                    self._logger.debug(output)
+                    if "1 molecule converted" in output:
+                        successful = True
+
+            tries += 1
 
         if not successful:
             with Popen(f"babel bond.pdb bond.mol2", stdin=PIPE, stdout=PIPE, stderr=PIPE,
